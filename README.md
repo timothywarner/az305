@@ -1,7 +1,7 @@
 <h1 align="center">
   <a href="https://github.com/timothywarner/az305">
     <!-- Please provide path to your logo here -->
-    <img src="docs/images/logo.svg" alt="Logo" width="100" height="100">
+    <img src="docs/images/cover.png" alt="Logo" width="300">
   </a>
 </h1>
 
@@ -33,10 +33,6 @@
 
 - [About](#about)
   - [Built With](#built-with)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Usage](#usage)
 - [Roadmap](#roadmap)
 - [Support](#support)
 - [Project assistance](#project-assistance)
@@ -52,37 +48,26 @@
 
 ## About
 
-> **[?]**
-> Provide general information about your project here.
-> What problem does it (intend to) solve?
-> What is the purpose of your project?
-> Why did you undertake it?
-> You don't have to answer all the questions -- just the ones relevant to your project.
-
-
+This is a six-hour, live, instructor-led online course that covers the [AZ-304: Microsoft Azure Architect Design](https://docs.microsoft.com/en-us/learn/certifications/exams/az-304) certification exam.
 
 ### Built With
 
-> **[?]**
-> Please provide the technologies that are used in the project.
-
-## Getting Started
-
-### Prerequisites
-
-> **[?]**
-> What are the project requirements/dependencies?
-
-### Installation
-
-> **[?]**
-> Describe how to install and get started with the project.
-
-## Usage
-
-> **[?]**
-> How does one go about using it?
-> Provide various use cases and code examples here.
+- Microsoft Azure
+- Visual Studio Code
+  - PowerShell extension
+  - ARM Tools extension
+  - Azure CLI Tools extension
+  - Azure Bicep extension
+  - Azure Account extension
+- Azure PowerShell
+- Azure CLI
+- Azure Bicep
+- Azure Storage Explorer
+- SQL Server Management Studio
+- Microsoft PowerPoint
+- Microsoft Visio
+- Techsmith Snagit
+- Lucidchart
 
 ## Roadmap
 
@@ -94,13 +79,13 @@ See the [open issues](https://github.com/timothywarner/az305/issues) for a list 
 
 ## Support
 
-> **[?]**
-> Provide additional ways to contact the project maintainer/maintainers.
-
 Reach out to the maintainer at one of the following places:
 
-- [GitHub issues](https://github.com/timothywarner/az305/issues/new?assignees=&labels=question&template=04_SUPPORT_QUESTION.md&title=support%3A+)
-- Contact options listed on [this GitHub profile](https://github.com/timothywarner)
+- [GitHub discussions](https://github.com/timothywarner/az304/discussions)
+- The email which is located [in GitHub profile](https://github.com/timothywarner)
+- [Twitter](http://twitter.com/techtrainertim)
+- [LinkedIn](https://www.linkedin.com/in/timothywarner)
+- [Website](https://techtrainertim.com/)
 
 ## Project assistance
 
@@ -140,6 +125,4 @@ See [LICENSE](LICENSE) for more information.
 
 ## Acknowledgements
 
-> **[?]**
-> If your work was funded by any organization or institution, acknowledge their support here.
-> In addition, if your work relies on other software libraries, or was inspired by looking at other work, it is appropriate to acknowledge this intellectual debt too.
+Thanks to Laura Lewin, Lindsay Ventimiglia, all Microsoft Azure engineering teams, and all my students for the great career and, by extension, a great life.
