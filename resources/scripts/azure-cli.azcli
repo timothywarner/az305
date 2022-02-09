@@ -1,0 +1,41 @@
+# Sign in
+az login
+
+# Set context
+az account list --help
+az account set --subscription "Microsoft Azure Sponsorship"
+
+# Set default output
+az configure
+
+# Find commands
+az find storage
+
+az find --search-query 'keyword'
+
+az account list-locations --query "[].{Region:name}" --out table
+
+az vm show -g oreilly -n oreilly-vm-1 --query "{name: name, os:storageProfile.imageReference.offer}" -o table
+
+# Get help
+az storage account --help
+
+# Interactive mode
+az interactive
+
+# Get resource groups
+az group list --subscription "Microsoft Azure Sponsorship"
+
+# Create a resource group
+az group create --name arm-test3 --location eastus
+
+# Validate a template
+az group deployment validate --resource-group arm-test3 --template-file ./storage-account.json
+
+# Deploy a template
+az deployment group create --name cli-deployment --resource-group arm-test3 --template-file ./storage-account.json
+
+# More complex script example with variables
+$LOCATION=eastus
+
+echo $LOCATION
