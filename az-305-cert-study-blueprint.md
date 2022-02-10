@@ -39,7 +39,8 @@
 
 * [MS Learning offers](https://www.microsoft.com/en-us/learning/offers.aspx)
 * [MeasureUp AZ-304](https://www.measureup.com/official-practice-test-az-304-microsoft-azure-architect-design.html)
-* [Whizlabs AZ-304](https://www.whizlabs.com/microsoft-azure-certification-az-304/)
+* [Whizlabs AZ-304 practice exams](https://www.whizlabs.com/designing-microsoft-azure-infrastructure-solutions-az-305/)
+* [Udemy AZ-305 practice questions](https://www.udemy.com/course/latest-az-305-exam-practice-test-questions/)
 * [Tim's Practice Exam Comparison video](https://www.youtube.com/watch?v=_aH4DbpcJWA&t=2s)
 
 ## Building Your toolset
