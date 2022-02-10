@@ -5,18 +5,37 @@
 ### Design identity, governance, and monitoring solutions (25-30%)
 
 * Logging and monitoring
+  * Log routing
 * Authentication and authorization
   * Identity options
   * RBAC
+  * Azure Policy
+* Store passwords and secrets
 
 ### Design data storage solutions (25-30%)
 
-* Relational data
+* Relational data options
+  * Pricing
   * Scalability
   * Encryption
-* Non-relational data
+* Non-relational data (storage account; Cosmos)
   * Cost optimization
   * Data protection and durability
+
+### Cert prep
+
+* Item types
+* Practice exams
+* Hands-on experience
+
+
+
+
+
+
+
+
+
 
 ## DAY 2
 
