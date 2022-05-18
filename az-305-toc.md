@@ -4,29 +4,43 @@
 
 ### Design identity, governance, and monitoring solutions (25-30%)
 
-* Logging and monitoring
-  * Log routing
 * Authentication and authorization
   * Identity options
+    * Conditional Access
   * RBAC
+    * PIM
   * Azure Policy
 * Store passwords and secrets
+  * ARM templates
+  * Managed storage account
+
+* Logging and monitoring
+  * Log routing
 
 ### Design data storage solutions (25-30%)
 
-* Relational data options
+* Semi-relational data
+  * Storage account
+    * Tiering
+* Relational data
+  * Options
   * Pricing
   * Scalability
   * Encryption
-* Non-relational data (storage account; Cosmos)
+  * LTR
+* Non-relational data
+  * Cosmos DB
   * Cost optimization
   * Data protection and durability
+* Integration
+  * ADF
+  * Event and messaging services
+  * Stream Analytics
 
 ### Cert prep
 
 * Item types
 * Practice exams
-* Hands-on experience
 
 
 
