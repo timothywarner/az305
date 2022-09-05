@@ -5,11 +5,7 @@
 * [Azure Solutions Architect Expert certification](https://docs.microsoft.com/en-us/learn/certifications/azure-solutions-architect/)
 * [Exam AZ-305 exam page](https://docs.microsoft.com/en-us/learn/certifications/exams/az-305)
 * [Microsoft Learn blog](https://techcommunity.microsoft.com/t5/microsoft-learn-blog/bg-p/MicrosoftLearnBlog)
-* [Microsoft cert renewal announcement](https://techcommunity.microsoft.com/t5/microsoft-learn-blog/is-your-certification-expiring-soon-renew-it-for-free-today/ba-p/2150405)
-* [Microsoft Learn exam validity announcement](https://techcommunity.microsoft.com/t5/microsoft-learn-blog/reminder-role-based-and-specialty-certifications-to-be-valid-for/ba-p/2150406)
-* [MS Learning Exam Policies and FAQ](https://www.microsoft.com/en-us/learning/certification-exam-policies.aspx)
 * [Microsoft online testing with Pearson Vue](https://docs.microsoft.com/en-us/learn/certifications/online-exams)
-* [Microsoft Certification Dashboard](https://aka.ms/certdashboard)
 * [Tim's online testing help video](https://www.youtube.com/watch?v=myf6r5nulj0&feature=youtu.be)
 * [Exam scoring and score reports](https://docs.microsoft.com/en-us/learn/certifications/exam-scoring-reports)
 * [Pearson VUE Grievance](https://home.pearsonvue.com/microsoft/contact)
@@ -38,8 +34,8 @@
 ## Practice exams
 
 * [MS Learning offers](https://www.microsoft.com/en-us/learning/offers.aspx)
-* [MeasureUp AZ-304](https://www.measureup.com/official-practice-test-az-304-microsoft-azure-architect-design.html)
-* [Whizlabs AZ-304 practice exams](https://www.whizlabs.com/designing-microsoft-azure-infrastructure-solutions-az-305/)
+* [MeasureUp AZ-305 practice exams](https://www.measureup.com/microsoft-az-305-practice-test-designing-azure-infraestructure-solutions.html)
+* [Whizlabs AZ-305 practice exams](https://www.whizlabs.com/designing-microsoft-azure-infrastructure-solutions-az-305/)
 * [Udemy AZ-305 practice questions](https://www.udemy.com/course/latest-az-305-exam-practice-test-questions/)
 * [Tim's Practice Exam Comparison video](https://www.youtube.com/watch?v=_aH4DbpcJWA&t=2s)
 
@@ -78,7 +74,8 @@
 * [Cloud Academy](https://cloudacademy.com/learning-paths/az-304-exam-preparation-designing-a-microsoft-azure-architecture-1724/)
 * [Pluralsight](https://www.pluralsight.com/role-iq/microsoft-azure-solution-architect)
 * [Pluralsight Cloud Labs](https://www.pluralsight.com/product/cloud-labs)
+* [Cloud Academy AZ-305 learning path](https://cloudacademy.com/learning-paths/az-305-exam-preparation-designing-microsoft-azure-infrastructure-solutions-4988/)
 * [Azure user group search](https://www.meetup.com/)
 * [Azure Free Trial](https://azure.microsoft.com/en-us/free/)
 * [Azure Pass offer](https://www.microsoftazurepass.com/)
-* [Azure Log Analytics Query Playground](https://portal.loganalytics.io/demo)
+* [Azure Log Analytics Query Playground](https://aka.ms/lademo)
