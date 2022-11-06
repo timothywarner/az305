@@ -13,7 +13,6 @@
 * Store passwords and secrets
   * ARM templates
   * Managed storage account
-
 * Logging and monitoring
   * Log routing
 
@@ -36,6 +35,8 @@
   * ADF
   * Event and messaging services
   * Stream Analytics
+
+PRIVATE LINK
 
 ### Cert prep
 
