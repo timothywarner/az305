@@ -53,7 +53,7 @@
 * [Azure Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/install)
 * [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 * [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-explorer/)
-* A[zure Data Studio](https://docs.microsoft.com/en-us/sql/azure-data-studio/download-azure-data-studio)
+* [Azure Data Studio](https://docs.microsoft.com/en-us/sql/azure-data-studio/download-azure-data-studio)
 * [AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
 * [Tim's Recommended Visual Studio Code Tutorial](https://vscode.pro/)
 * [Lucidchart](https://www.lucidchart.com/pages/)
@@ -62,7 +62,6 @@
 ## Azure Bicep
 
 * [Bicep Playground](https://bicepdemo.z22.web.core.windows.net/)
-* [im's Frankenstein project](https://github.com/timothywarner/frankenstein)
 * [Azure Bicep tutorial](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/learn-bicep)
 * [Tim's Frankenstein project](https://github.com/timothywarner/frankenstein)
 
