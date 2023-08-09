@@ -1,8 +1,6 @@
 # AZ-305 Table of Contents
 
-## DAY 1
-
-### Design identity, governance, and monitoring solutions (25-30%)
+## Design identity, governance, and monitoring solutions (25-30%)
 
 * Authentication and authorization
   * Identity options
@@ -16,7 +14,7 @@
 * Logging and monitoring
   * Log routing
 
-### Design data storage solutions (25-30%)
+## Design data storage solutions (25-30%)
 
 * Semi-relational data
   * Storage account
@@ -38,15 +36,12 @@
 
 PRIVATE LINK
 
-### Cert prep
+## Cert prep
 
 * Item types
 * Practice exams
 
-
-## DAY 2
-
-### Design business continuity solutions (10-15%)
+## Design business continuity solutions (10-15%)
 
 * Backup and recovery
   * Compute
@@ -57,7 +52,7 @@ PRIVATE LINK
   * Storage
   * Databases
 
-### Design infrastructure solutions (25-30%)
+## Design infrastructure solutions (25-30%)
 
 * Compute solutions
   * VMs
