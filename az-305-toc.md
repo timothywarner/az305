@@ -44,14 +44,6 @@ PRIVATE LINK
 * Practice exams
 
 
-
-
-
-
-
-
-
-
 ## DAY 2
 
 ### Design business continuity solutions (10-15%)
