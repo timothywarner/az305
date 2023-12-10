@@ -1,128 +1,80 @@
-<h1 align="center">
-  <a href="https://github.com/timothywarner/az305">
-    <!-- Please provide path to your logo here -->
-    <img src="docs/images/cover.png" alt="Logo" width="300">
-  </a>
-</h1>
+# Tim's AZ-305 Certification Study Resources
 
-<div align="center">
-  AZ-305: Designing Microsoft Azure Infrastructure Solutions Crash Course
-  <br />
-  <a href="#about"><strong>Explore the docs »</strong></a>
-  <br />
-  <br />
-  <a href="https://github.com/timothywarner/az305/issues/new?assignees=&labels=bug&template=01_BUG_REPORT.md&title=bug%3A+">Report a Bug</a>
-  ·
-  <a href="https://github.com/timothywarner/az305/issues/new?assignees=&labels=enhancement&template=02_FEATURE_REQUEST.md&title=feat%3A+">Request a Feature</a>
-  .
-  <a href="https://github.com/timothywarner/az305/issues/new?assignees=&labels=question&template=04_SUPPORT_QUESTION.md&title=support%3A+">Ask a Question</a>
-</div>
+## About the exam
 
-<div align="center">
-<br />
+* [Azure Solutions Architect Expert certification](https://docs.microsoft.com/en-us/learn/certifications/azure-solutions-architect/)
+* [Exam AZ-305 exam page](https://docs.microsoft.com/en-us/learn/certifications/exams/az-305)
+* [Microsoft Learn blog](https://techcommunity.microsoft.com/t5/microsoft-learn-blog/bg-p/MicrosoftLearnBlog)
+* [Microsoft online testing with Pearson Vue](https://docs.microsoft.com/en-us/learn/certifications/online-exams)
+* [Tim's online testing help video](https://www.youtube.com/watch?v=myf6r5nulj0&feature=youtu.be)
+* [Exam scoring and score reports](https://docs.microsoft.com/en-us/learn/certifications/exam-scoring-reports)
+* [Pearson VUE Grievance](https://home.pearsonvue.com/microsoft/contact)
+* [Microsoft Policies and FAQs](https://docs.microsoft.com/en-us/learn/certifications/certification-exam-policies)
 
-[![Project license](https://img.shields.io/github/license/timothywarner/az305.svg?style=flat-square)](LICENSE)
+## Conceptual learning
 
-[![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg?style=flat-square)](https://github.com/timothywarner/az305/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
-[![code with love by timothywarner](https://img.shields.io/badge/%3C%2F%3E%20with%20%E2%99%A5%20by-timothywarner-ff1414.svg?style=flat-square)](https://github.com/timothywarner)
+* [AZ-305 Class Topology](https://lucid.app/lucidchart/5b4214cf-b00b-400d-80ff-c15572f57904/view?page=0_0#)
+* [Tim's ARM templates tutorial](https://timwinfo-my.sharepoint.com/:x:/g/personal/tim_timw_info/EQRooL1BhnRMjaIx6WEovRYBDXbzHOI1CrtpNls3zesDHw?rtime=rMc-0Xbz2Eg)
+* [Adam Marczak's ARM templates tutorial](https://www.youtube.com/watch?v=Ge_Sp-1lWZ4&t=876s)
+* [Sam Cogan's ARM templates tutorial](https://www.youtube.com/watch?v=9EpBiud48Ao)
+* [Azure Documentation](https://docs.microsoft.com/en-us/azure/)
+* [Azure Architecture Center](https://docs.microsoft.com/bs-cyrl-ba/azure/architecture/)
+* [Well-Architected Framework](https://docs.microsoft.com/en-us/azure/architecture/framework/)
+* [Cloud Adoption Framework](https://docs.microsoft.com/en-us/azure/architecture/cloud-adoption/)
+* [Azure Application Architecture Guide](https://docs.microsoft.com/en-us/azure/architecture/guide/)
+* [Azure Solutions Architectures](https://azure.microsoft.com/en-us/solutions/architecture/)
+* [Azure SLAs](https://azure.microsoft.com/en-us/support/legal/sla/)
+* [Azure preview feature terms of use](https://azure.microsoft.com/en-us/support/legal/preview-supplemental-terms/)
+* [ARM template test toolkit](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/test-toolkit)
+* [Azure Quickstart Templates](https://azure.microsoft.com/en-us/resources/templates/)
+* [Secure DevOps Kit for Azure](https://azsk.azurewebsites.net/)
+* [Azure for AWS Professionals](https://docs.microsoft.com/en-us/azure/architecture/aws-professional/)
+* [Azure for Google Cloud Professionals](https://docs.microsoft.com/en-us/azure/architecture/gcp-professional/)
 
-</div>
+## Practice exams
 
-<details open="open">
-<summary>Table of Contents</summary>
+* [MS Learning offers](https://www.microsoft.com/en-us/learning/offers.aspx)
+* [MeasureUp AZ-305 practice exams](https://www.measureup.com/microsoft-az-305-practice-test-designing-azure-infraestructure-solutions.html)
+* [Whizlabs AZ-305 practice exams](https://www.whizlabs.com/designing-microsoft-azure-infrastructure-solutions-az-305/)
+* [Udemy AZ-305 practice questions](https://www.udemy.com/course/latest-az-305-exam-practice-test-questions/)
+* [Tim's Practice Exam Comparison video](https://www.youtube.com/watch?v=_aH4DbpcJWA&t=2s)
 
-- [About](#about)
-  - [Built With](#built-with)
-- [Roadmap](#roadmap)
-- [Support](#support)
-- [Project assistance](#project-assistance)
-- [Contributing](#contributing)
-- [Authors & contributors](#authors--contributors)
-- [Security](#security)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
+## Building Your toolset
 
-</details>
+* [Visual Studio Code](https://code.visualstudio.com/)
+* Extensions
+  * [PowerShell](https://marketplace.visualstudio.com/items?itemName=ms-vscode.PowerShell)
+  * [Azure Account](https://marketplace.visualstudio.com/items?itemName=ms-vscode.azure-account)
+  * [ARM Tools](https://marketplace.visualstudio.com/items?itemName=msazurermtools.azurerm-vscode-tools)
+  * [Azure CLI Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.azurecli)
+  * [Bicep](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-bicep)
+* [PowerShell 7](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell)
+* [Azure PowerShell](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
+* [Azure Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/install)
+* [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+* [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-explorer/)
+* [Azure Data Studio](https://docs.microsoft.com/en-us/sql/azure-data-studio/download-azure-data-studio)
+* [AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
+* [Tim's Recommended Visual Studio Code Tutorial](https://vscode.pro/)
+* [Lucidchart](https://www.lucidchart.com/pages/)
+* [Sandro's Azure Visio Stencils and Icons](https://blog.sandro-pereira.com/2021/06/21/microsoft-integration-and-azure-stencils-pack-for-visio-new-version-available-v7-2-0/)
 
----
+## Azure Bicep
 
-## About
+* [Bicep Playground](https://bicepdemo.z22.web.core.windows.net/)
+* [Azure Bicep tutorial](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/learn-bicep)
+* [Tim's Frankenstein project](https://github.com/timothywarner/frankenstein)
 
-This is a six-hour, live, instructor-led online course that covers the [AZ-304: Microsoft Azure Architect Design](https://docs.microsoft.com/en-us/learn/certifications/exams/az-304) certification exam.
+## Hands-on skill development
 
-### Built With
-
-- Microsoft Azure
-- Visual Studio Code
-  - PowerShell extension
-  - ARM Tools extension
-  - Azure CLI Tools extension
-  - Azure Bicep extension
-  - Azure Account extension
-- Azure PowerShell
-- Azure CLI
-- Azure Bicep
-- Azure Storage Explorer
-- SQL Server Management Studio
-- Microsoft PowerPoint
-- Microsoft Visio
-- Techsmith Snagit
-- Lucidchart
-
-## Roadmap
-
-See the [open issues](https://github.com/timothywarner/az305/issues) for a list of proposed features (and known issues).
-
-- [Top Feature Requests](https://github.com/timothywarner/az305/issues?q=label%3Aenhancement+is%3Aopen+sort%3Areactions-%2B1-desc) (Add your votes using the 👍 reaction)
-- [Top Bugs](https://github.com/timothywarner/az305/issues?q=is%3Aissue+is%3Aopen+label%3Abug+sort%3Areactions-%2B1-desc) (Add your votes using the 👍 reaction)
-- [Newest Bugs](https://github.com/timothywarner/az305/issues?q=is%3Aopen+is%3Aissue+label%3Abug)
-
-## Support
-
-Reach out to the maintainer at one of the following places:
-
-- [GitHub discussions](https://github.com/timothywarner/az304/discussions)
-- The email which is located [in GitHub profile](https://github.com/timothywarner)
-- [Twitter](http://twitter.com/techtrainertim)
-- [LinkedIn](https://www.linkedin.com/in/timothywarner)
-- [Website](https://techtrainertim.com/)
-
-## Project assistance
-
-If you want to say **thank you** or/and support active development of AZ-305: Designing Microsoft Azure Infrastructure Solutions Crash Course:
-
-- Add a [GitHub Star](https://github.com/timothywarner/az305) to the project.
-- Tweet about the AZ-305: Designing Microsoft Azure Infrastructure Solutions Crash Course.
-- Write interesting articles about the project on [Dev.to](https://dev.to/), [Medium](https://medium.com/) or your personal blog.
-
-Together, we can make AZ-305: Designing Microsoft Azure Infrastructure Solutions Crash Course **better**!
-
-## Contributing
-
-First off, thanks for taking the time to contribute! Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make will benefit everybody else and are **greatly appreciated**.
-
-
-Please read [our contribution guidelines](docs/CONTRIBUTING.md), and thank you for being involved!
-
-## Authors & contributors
-
-The original setup of this repository is by [Tim Warner](https://github.com/timothywarner).
-
-For a full list of all authors and contributors, see [the contributors page](https://github.com/timothywarner/az305/contributors).
-
-## Security
-
-AZ-305: Designing Microsoft Azure Infrastructure Solutions Crash Course follows good practices of security, but 100% security cannot be assured.
-AZ-305: Designing Microsoft Azure Infrastructure Solutions Crash Course is provided **"as is"** without any **warranty**. Use at your own risk.
-
-_For more information and to report security issues, please refer to our [security documentation](docs/SECURITY.md)._
-
-## License
-
-This project is licensed under the **MIT license**.
-
-See [LICENSE](LICENSE) for more information.
-
-## Acknowledgements
-
-Thanks to Laura Lewin, Lindsay Ventimiglia, all Microsoft Azure engineering teams, and all my students for the great career and, by extension, a great life.
+* [Microsoft Learn](https://docs.microsoft.com/en-us/learn/browse/?roles=solution-architect)
+* [Azure Citadel](https://azurecitadel.com/)
+* [A Cloud Guru](https://acloudguru.com/course/az-304-microsoft-azure-architect-design)
+* [Cloud Academy](https://cloudacademy.com/learning-paths/az-304-exam-preparation-designing-a-microsoft-azure-architecture-1724/)
+* [Pluralsight](https://www.pluralsight.com/role-iq/microsoft-azure-solution-architect)
+* [Pluralsight Cloud Labs](https://www.pluralsight.com/product/cloud-labs)
+* [Cloud Academy AZ-305 learning path](https://cloudacademy.com/learning-paths/az-305-exam-preparation-designing-microsoft-azure-infrastructure-solutions-4988/)
+* [Azure user group search](https://www.meetup.com/)
+* [Azure Free Trial](https://azure.microsoft.com/en-us/free/)
+* [Azure Pass offer](https://www.microsoftazurepass.com/)
+* [Azure Log Analytics Query Playground](https://aka.ms/lademo)
