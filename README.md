@@ -36,7 +36,6 @@
 * [MS Learning offers](https://www.microsoft.com/en-us/learning/offers.aspx)
 * [MeasureUp AZ-305 practice exams](https://www.measureup.com/microsoft-az-305-practice-test-designing-azure-infraestructure-solutions.html)
 * [Whizlabs AZ-305 practice exams](https://www.whizlabs.com/designing-microsoft-azure-infrastructure-solutions-az-305/)
-* [Udemy AZ-305 practice questions](https://www.udemy.com/course/latest-az-305-exam-practice-test-questions/)
 * [Tim's Practice Exam Comparison video](https://www.youtube.com/watch?v=_aH4DbpcJWA&t=2s)
 
 ## Building Your toolset
