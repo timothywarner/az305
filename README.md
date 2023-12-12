@@ -10,6 +10,7 @@
 * [Exam scoring and score reports](https://docs.microsoft.com/en-us/learn/certifications/exam-scoring-reports)
 * [Pearson VUE Grievance](https://home.pearsonvue.com/microsoft/contact)
 * [Microsoft Policies and FAQs](https://docs.microsoft.com/en-us/learn/certifications/certification-exam-policies)
+* [Jack Lee's AZ-305 Study Guide](https://github.com/AzureMentor/Azure-AZ-305-Study-Guide)
 
 ## Conceptual learning
 
