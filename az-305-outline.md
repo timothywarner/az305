@@ -1,6 +1,6 @@
 # AZ-305 Class Outline
 
-Updated December 10, 2023
+Updated February 18, 2024
 
 ## Design Identity, Governance, and Monitoring Solutions (25–30%)
 
