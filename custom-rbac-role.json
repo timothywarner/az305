@@ -1,0 +1,27 @@
+{
+	"Name": "Custom Storage Role",
+	"Id": "88888888-8888-8888-8888-888888888888",
+	"IsCustom": true,
+	"Description": "Allows for specific actions on Azure Storage while denying others.",
+	"Actions": [
+		"Microsoft.Storage/storageAccounts/read",
+		"Microsoft.Storage/storageAccounts/write",
+		"Microsoft.Storage/storageAccounts/blobServices/containers/read",
+		"Microsoft.Storage/storageAccounts/blobServices/containers/write"
+	],
+	"NotActions": [
+		"Microsoft.Storage/storageAccounts/delete",
+		"Microsoft.Storage/storageAccounts/blobServices/containers/delete"
+	],
+	"DataActions": [
+		"Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read",
+		"Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write"
+	],
+	"NotDataActions": [
+		"Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete"
+	],
+	"AssignableScopes": [
+		"/subscriptions/{subscriptionId1}",
+		"/subscriptions/{subscriptionId2}"
+	]
+}
