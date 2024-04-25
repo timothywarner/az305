@@ -8,6 +8,7 @@
 * [MeasureUp AZ-305 practice exams](https://www.measureup.com/microsoft-az-305-practice-test-designing-azure-infraestructure-solutions.html)
 * [MS Learn Solutions Architect free training path](https://learn.microsoft.com/en-us/training/career-paths/solution-architect)
 * [Azure Log Analytics Query Playground](https://aka.ms/lademo)
+* [Microsoft Policies and FAQs](https://learn.microsoft.com/en-us/credentials/certifications/certification-exam-policies)
 
 ## About the exam
 
