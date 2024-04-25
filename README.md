@@ -1,5 +1,14 @@
 # Tim's AZ-305 Certification Study Resources
 
+## In a nutshell
+
+* [Exam AZ-305 exam page](https://docs.microsoft.com/en-us/learn/certifications/exams/az-305)
+* [Microsoft Practice Assessments](https://learn.microsoft.com/en-us/credentials/certifications/practice-assessments-for-microsoft-certifications)
+* [MS Learning offers](https://www.microsoft.com/en-us/learning/offers.aspx)
+* [MeasureUp AZ-305 practice exams](https://www.measureup.com/microsoft-az-305-practice-test-designing-azure-infraestructure-solutions.html)
+* [MS Learn Solutions Architect free training path](https://learn.microsoft.com/en-us/training/career-paths/solution-architect)
+* [Azure Log Analytics Query Playground](https://aka.ms/lademo)
+
 ## About the exam
 
 * [Azure Solutions Architect Expert certification](https://docs.microsoft.com/en-us/learn/certifications/azure-solutions-architect/)
