@@ -1,0 +1,57 @@
+name: Sync AZ-305 Exam Objectives
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_message:
+        description: 'Reason for update'
+        required: true
+        default: 'Manual sync with Microsoft Learn objectives'
+
+jobs:
+  sync-objectives:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install beautifulsoup4 requests markdown
+
+      - name: Sync exam objectives
+        run: |
+          python .github/scripts/sync_objectives.py
+        env:
+          EXAM_URL: "https://learn.microsoft.com/en-us/credentials/certifications/exams/az-305/"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "chore: sync exam objectives with Microsoft Learn"
+          title: "📚 Sync: AZ-305 Exam Objectives Update"
+          body: |
+            This PR updates the AZ-305 exam objectives from Microsoft Learn.
+            
+            Update reason: ${{ github.event.inputs.update_message }}
+            
+            - [ ] Review changes
+            - [ ] Check formatting
+            - [ ] Verify emoji consistency
+          branch: sync/exam-objectives
+          delete-branch: true
+          labels: |
+            automated
+            exam-objectives
+            documentation 
