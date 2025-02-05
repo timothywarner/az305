@@ -87,7 +87,6 @@ Learn through hands-on labs and live environments:
 - [MeasureUp Practice Exams](https://www.measureup.com/microsoft-az-305-practice-test-designing-azure-infrastructure-solutions.html)
 - [Whizlabs AZ-305 Practice Exams](https://www.whizlabs.com/designing-microsoft-azure-infrastructure-solutions-az-305/)
 - [Udemy AZ-305 Practice Questions](https://www.udemy.com/course/latest-az-305-exam-practice-test-questions/)
-- [ExamTopics AZ-305 Practice Questions](https://www.examtopics.com/exams/microsoft/az-305/)
 
 ---
 
