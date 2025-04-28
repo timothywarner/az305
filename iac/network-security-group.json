@@ -1,0 +1,121 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "nsgName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the Network Security Group"
+            }
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources"
+            }
+        }
+    },
+    "variables": {
+        "securityRules": [
+            {
+                "name": "Allow-VNet-InBound",
+                "properties": {
+                    "priority": 100,
+                    "protocol": "*",
+                    "access": "Allow",
+                    "direction": "Inbound",
+                    "sourceAddressPrefix": "VirtualNetwork",
+                    "sourcePortRange": "*",
+                    "destinationAddressPrefix": "VirtualNetwork",
+                    "destinationPortRange": "*"
+                }
+            },
+            {
+                "name": "Allow-AzureLoadBalancer-InBound",
+                "properties": {
+                    "priority": 110,
+                    "protocol": "*",
+                    "access": "Allow",
+                    "direction": "Inbound",
+                    "sourceAddressPrefix": "AzureLoadBalancer",
+                    "sourcePortRange": "*",
+                    "destinationAddressPrefix": "*",
+                    "destinationPortRange": "*"
+                }
+            },
+            {
+                "name": "Deny-All-InBound",
+                "properties": {
+                    "priority": 4096,
+                    "protocol": "*",
+                    "access": "Deny",
+                    "direction": "Inbound",
+                    "sourceAddressPrefix": "*",
+                    "sourcePortRange": "*",
+                    "destinationAddressPrefix": "*",
+                    "destinationPortRange": "*"
+                }
+            }
+        ],
+        "defaultSecurityRules": [
+            {
+                "name": "Allow-VNet-InBound",
+                "properties": {
+                    "priority": 65000,
+                    "protocol": "*",
+                    "access": "Allow",
+                    "direction": "Inbound",
+                    "sourceAddressPrefix": "VirtualNetwork",
+                    "sourcePortRange": "*",
+                    "destinationAddressPrefix": "VirtualNetwork",
+                    "destinationPortRange": "*"
+                }
+            },
+            {
+                "name": "Allow-AzureLoadBalancer-InBound",
+                "properties": {
+                    "priority": 65001,
+                    "protocol": "*",
+                    "access": "Allow",
+                    "direction": "Inbound",
+                    "sourceAddressPrefix": "AzureLoadBalancer",
+                    "sourcePortRange": "*",
+                    "destinationAddressPrefix": "*",
+                    "destinationPortRange": "*"
+                }
+            },
+            {
+                "name": "Deny-All-InBound",
+                "properties": {
+                    "priority": 65500,
+                    "protocol": "*",
+                    "access": "Deny",
+                    "direction": "Inbound",
+                    "sourceAddressPrefix": "*",
+                    "sourcePortRange": "*",
+                    "destinationAddressPrefix": "*",
+                    "destinationPortRange": "*"
+                }
+            }
+        ]
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2023-05-01",
+            "name": "[parameters('nsgName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": "[variables('securityRules')]",
+                "defaultSecurityRules": "[variables('defaultSecurityRules')]"
+            }
+        }
+    ],
+    "outputs": {
+        "nsgId": {
+            "type": "string",
+            "value": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgName'))]"
+        }
+    }
+} 

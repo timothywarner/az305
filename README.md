@@ -8,7 +8,7 @@ Welcome to the ultimate resource hub for preparing for the **AZ-305 Microsoft Az
 
 ## 📬 **Contact Information**
 - **[Email](mailto:timothywarner316@gmail.com)**
-- **[LinkedIn](https://www.linkedin.com/in/timothywarner/)**
+- **[LinkedIn](https://www.linkedin.com/in/timothywarner316/)**
 - **[YouTube Channel](https://www.youtube.com/channel/UCim7PFtynyPuzMHtbNyYOXA)**
 - **[Website](https://techtrainertim.com)**
 - **[Bluesky](https://bsky.app/profile/techtrainertim.bsky.social)**
@@ -23,10 +23,10 @@ Welcome to the ultimate resource hub for preparing for the **AZ-305 Microsoft Az
 - [AZ-305 Exam Page](https://docs.microsoft.com/en-us/learn/certifications/exams/az-305)
 - [AZ-305 Skills Measured](https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-305)
 - [Exam Registration (Microsoft/Pearson VUE)](https://learn.microsoft.com/en-us/credentials/certifications/schedule-through-pearson-vue?examUid=exam.AZ-305&examUrl=https%3A%2F%2Flearn.microsoft.com%2Fcredentials%2Fcertifications)
-- [MeasureUp AZ-305 Practice Exams](https://www.measureup.com/microsoft-az-305-practice-test-designing-azure-infrastructure-solutions.html)
+- [MeasureUp AZ-305 Practice Exams](https://www.measureup.com/az-305-microsoft-azure-solutions-architect-expert-practice-test.html)
 - [Microsoft Learn AZ-305 Learning Path](https://learn.microsoft.com/en-us/training/courses/az-305t00/)
-- [Azure Free Account Signup](https://azure.microsoft.com/en-us/pricing/purchase-options/azure-account)
-- [Pearson CertPREP AZ-305 Training Labs](https://govstore.pearsonvue.com/certprep-microsoft-exam-az-305/p/CLC-AZ305-PVUE)
+- [Azure Free Account Signup](https://azure.microsoft.com/en-us/free/)
+- [Pearson CertPREP AZ-305 Training Labs](https://www.pearsonvue.com/microsoft/exam-details)
 
 ---
 
@@ -58,8 +58,8 @@ Essential tools to follow along and practice efficiently:
     - [Azure CLI Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.azurecli)
     - [Azure Resource Manager (ARM) Tools](https://marketplace.visualstudio.com/items?itemName=msazurermtools.azurerm-vscode-tools)
     - [Bicep](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-bicep)
-    - [Azure Policy](https://marketplace.visualstudio.com/items?itemName=msazurermtools.azurerm-vscode-policy)
-    - [Azure Resource Manager Snippets](https://marketplace.visualstudio.com/items?itemName=marcostazi.vs-code-azure-arm-snippets)
+    - [Azure Policy](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurepolicy)
+    - [Azure Resource Manager Snippets](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurearm-snippets)
 - [Git](https://git-scm.com/downloads)
 - [GitHub CLI](https://cli.github.com/)
 - [PowerShell 7](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell)
@@ -73,20 +73,20 @@ Essential tools to follow along and practice efficiently:
 
 ## 🛡 **Practical Application**
 Learn through hands-on labs and live environments:
-- [Azure Free Account](https://azure.microsoft.com/en-us/free/)
+- [Azure Free Account](https://azure.microsoft.com/en-us/free/trial/)
 - [Microsoft Learn: Solutions Architect Path](https://docs.microsoft.com/en-us/learn/browse/?roles=solution-architect)
 - [Azure Citadel](https://azurecitadel.com/)
 - [AZ-305 Microsoft Official Curriculum Labs](https://github.com/MicrosoftLearning/AZ-305-DesigningMicrosoftAzureInfrastructureSolutions)
-- [Azure Bicep Playground](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/playground)
-- [Azure Log Analytics Demo Environment](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/log-analytics-demo-environment)
+- [Azure Bicep Playground](https://bicepdemo.z22.web.core.windows.net/)
+- [Azure Log Analytics Demo Environment](https://portal.azure.com/#blade/Microsoft_Azure_Monitoring/LogsDemoBlade)
 
 ---
 
 ## 📑 **Practice Exams**
 - [Microsoft Free Practice Assessments](https://learn.microsoft.com/en-us/certifications/practice-assessments-for-microsoft-certifications)
-- [MeasureUp Practice Exams](https://www.measureup.com/microsoft-az-305-practice-test-designing-azure-infrastructure-solutions.html)
+- [MeasureUp Practice Exams](https://www.measureup.com/az-305-microsoft-azure-solutions-architect-expert-practice-test.html)
 - [Whizlabs AZ-305 Practice Exams](https://www.whizlabs.com/designing-microsoft-azure-infrastructure-solutions-az-305/)
-- [Udemy AZ-305 Practice Questions](https://www.udemy.com/course/latest-az-305-exam-practice-test-questions/)
+- [Udemy AZ-305 Practice Questions](https://www.udemy.com/course/az-305-microsoft-azure-solutions-architect-expert-practice-test/)
 
 ---
 
@@ -106,3 +106,40 @@ Learn through hands-on labs and live environments:
 ---
 
 This README is designed for maximum utility and easy navigation. If you have suggestions or corrections, feel free to reach out via the contact information above. Best of luck on your AZ-305 journey!
+
+# Architecture Diagram Downloader
+
+This script downloads architecture diagrams from Microsoft Learn pages for the AZ-305 course.
+
+## Prerequisites
+
+- Python 3.6 or higher
+- pip (Python package installer)
+
+## Installation
+
+1. Clone this repository or download the files
+2. Install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+Run the script with:
+
+```bash
+python download_diagrams.py
+```
+
+The script will:
+1. Create an `images` directory if it doesn't exist
+2. Download architecture diagrams from the specified Microsoft Learn pages
+3. Save the images with descriptive filenames based on the page name and image index
+
+## Notes
+
+- The script includes a 1-second delay between requests to be respectful to the servers
+- Images are filtered to include only those with 'architecture', 'diagram', or 'reference' in their URLs
+- The script handles both regular images and SVG diagrams
