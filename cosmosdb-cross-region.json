@@ -1,0 +1,175 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "cosmosDbAccountName": {
+            "type": "string",
+            "defaultValue": "[concat('cosmos-', uniqueString(resourceGroup().id))]",
+            "metadata": {
+                "description": "The name of the Cosmos DB account"
+            }
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "The location for the primary region"
+            }
+        },
+        "backupLocation": {
+            "type": "string",
+            "defaultValue": "eastus",
+            "metadata": {
+                "description": "The location for the backup region"
+            }
+        },
+        "databaseName": {
+            "type": "string",
+            "defaultValue": "SampleDatabase",
+            "metadata": {
+                "description": "The name of the database"
+            }
+        },
+        "containerName": {
+            "type": "string",
+            "defaultValue": "SampleContainer",
+            "metadata": {
+                "description": "The name of the container"
+            }
+        },
+        "partitionKeyPath": {
+            "type": "string",
+            "defaultValue": "/id",
+            "metadata": {
+                "description": "The partition key path for the container"
+            }
+        },
+        "offerType": {
+            "type": "string",
+            "defaultValue": "Standard",
+            "allowedValues": [
+                "Standard"
+            ],
+            "metadata": {
+                "description": "The offer type for the Cosmos DB account"
+            }
+        },
+        "consistencyLevel": {
+            "type": "string",
+            "defaultValue": "Session",
+            "allowedValues": [
+                "Eventual",
+                "Session",
+                "BoundedStaleness",
+                "Strong",
+                "ConsistentPrefix"
+            ],
+            "metadata": {
+                "description": "The consistency level for the Cosmos DB account"
+            }
+        }
+    },
+    "variables": {
+        "locations": [
+            {
+                "locationName": "[parameters('location')]",
+                "failoverPriority": 0
+            },
+            {
+                "locationName": "[parameters('backupLocation')]",
+                "failoverPriority": 1
+            }
+        ]
+    },
+    "resources": [
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts",
+            "apiVersion": "2023-04-15",
+            "name": "[parameters('cosmosDbAccountName')]",
+            "location": "[parameters('location')]",
+            "kind": "GlobalDocumentDB",
+            "properties": {
+                "databaseAccountOfferType": "[parameters('offerType')]",
+                "locations": "[variables('locations')]",
+                "consistencyPolicy": {
+                    "defaultConsistencyLevel": "[parameters('consistencyLevel')]"
+                },
+                "enableAutomaticFailover": true,
+                "enableMultipleWriteLocations": true,
+                "enableCassandraConnector": false,
+                "ipRules": [],
+                "isVirtualNetworkFilterEnabled": false,
+                "publicNetworkAccess": "Enabled",
+                "enableFreeTier": false,
+                "enableAnalyticalStorage": false,
+                "backupPolicy": {
+                    "type": "Periodic",
+                    "periodicModeProperties": {
+                        "backupIntervalInMinutes": 240,
+                        "backupRetentionIntervalInHours": 8
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+            "apiVersion": "2023-04-15",
+            "name": "[concat(parameters('cosmosDbAccountName'), '/', parameters('databaseName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+            ],
+            "properties": {
+                "resource": {
+                    "id": "[parameters('databaseName')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+            "apiVersion": "2023-04-15",
+            "name": "[concat(parameters('cosmosDbAccountName'), '/', parameters('databaseName'), '/', parameters('containerName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDbAccountName'), parameters('databaseName'))]"
+            ],
+            "properties": {
+                "resource": {
+                    "id": "[parameters('containerName')]",
+                    "partitionKey": {
+                        "paths": [
+                            "[parameters('partitionKeyPath')]"
+                        ],
+                        "kind": "Hash"
+                    },
+                    "indexingPolicy": {
+                        "indexingMode": "consistent",
+                        "automatic": true,
+                        "includedPaths": [
+                            {
+                                "path": "/*"
+                            }
+                        ],
+                        "excludedPaths": []
+                    }
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "cosmosDbAccountName": {
+            "type": "string",
+            "value": "[parameters('cosmosDbAccountName')]"
+        },
+        "cosmosDbEndpoint": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2023-04-15').documentEndpoint]"
+        },
+        "primaryReadonlyMasterKey": {
+            "type": "string",
+            "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2023-04-15').primaryReadonlyMasterKey]"
+        },
+        "primaryMasterKey": {
+            "type": "string",
+            "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2023-04-15').primaryMasterKey]"
+        }
+    }
+} 

@@ -6,7 +6,7 @@
         "/subscriptions/{subscription-id}/resourceGroups/{resource-group}"
     ],
     "Actions": [
-        "Microsoft.Storage/storageAccounts/read",
+        "Microsoft.Storage/storageAccounts/*",
         "Microsoft.Storage/storageAccounts/listKeys/action",
         "Microsoft.Storage/storageAccounts/regeneratekey/action"
     ],
