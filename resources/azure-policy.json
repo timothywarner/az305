@@ -1,0 +1,98 @@
+{
+	"properties": {
+		"displayName": "Deploy diagnostic settings for SQL Databases to Log Analytics workspace",
+		"policyType": "BuiltIn",
+		"mode": "Indexed",
+		"description": "This policy automatically deploys a diagnostic setting to any SQL Database that does not already have one. The diagnostic setting will send all categories of logs to a specified Log Analytics workspace.",
+		"metadata": {
+			"version": "1.0.0",
+			"category": "Monitoring"
+		},
+		"parameters": {
+			"workspaceId": {
+				"type": "String",
+				"metadata": {
+					"displayName": "Log Analytics workspace",
+					"description": "Select Log Analytics workspace from dropdown list. If this workspace is outside of the scope of the assignment you must manually grant 'Log Analytics Contributor' permissions (or similar) to the policy assignment's identity."
+				}
+			}
+		},
+		"policyRule": {
+			"if": {
+				"field": "type",
+				"equals": "Microsoft.Sql/servers/databases"
+			},
+			"then": {
+				"effect": "DeployIfNotExists",
+				"details": {
+					"type": "Microsoft.Insights/diagnosticSettings",
+					"existenceCondition": {
+						"allOf": [
+							{
+								"field": "Microsoft.Insights/diagnosticSettings/workspaceId",
+								"equals": "[parameters('workspaceId')]"
+							}
+						]
+					},
+					"roleDefinitionIds": [
+						"/providers/microsoft.authorization/roleDefinitions/92aaf0da-9dab-42b6-94a3-d43ce8d16293"
+					],
+					"deployment": {
+						"properties": {
+							"mode": "incremental",
+							"template": {
+								"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+								"contentVersion": "1.0.0.0",
+								"parameters": {
+									"name": {
+										"type": "string"
+									},
+									"workspaceId": {
+										"type": "string"
+									}
+								},
+								"resources": [
+									{
+										"type": "Microsoft.Sql/servers/databases/providers/diagnosticSettings",
+										"name": "[concat(parameters('name'), '/Microsoft.Insights/service')]",
+										"apiVersion": "2017-05-01-preview",
+										"properties": {
+											"workspaceId": "[parameters('workspaceId')]",
+											"logs": [
+												{
+													"category": "SQLSecurityAuditEvents",
+													"enabled": true
+												}
+											],
+											"metrics": [
+												{
+													"timeGrain": "PT1M",
+													"enabled": true,
+													"retentionPolicy": {
+														"enabled": true,
+														"days": 7
+													}
+												}
+											]
+										}
+									}
+								]
+							},
+							"parameters": {
+								"name": {
+									"value": "[field('name')]"
+								},
+								"workspaceId": {
+									"value": "[parameters('workspaceId')]"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"id": "/providers/Microsoft.Authorization/policyDefinitions/0a914e76-4921-4c19-b460-a2d36003525a",
+	"type": "Microsoft.Authorization/policyDefinitions",
+	"name": "0a914e76-4921-4c19-b460-a2d36003525a"
+}

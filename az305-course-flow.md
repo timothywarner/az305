@@ -1,81 +1,113 @@
-# AZ-305 Crash Course - Tim Warner's Way
+# AZ-305 Design Course - Tim Warner
 
 ## Schedule (Central Time)
-- 11:00 AM - Start Segment 1
-- 12:00 PM - 9-minute break
-- 12:09 PM - Start Segment 2
-- 01:00 PM - 9-minute break
-- 01:09 PM - Start Segment 3
-- 02:00 PM - 9-minute break
-- 02:09 PM - Start Segment 4
-- 03:00 PM - 9-minute break
-- 03:09 PM - Start Segment 5
-- 04:00 PM - Course Completion
+- 9:00 AM - Start Segment 1
+- 9:50 AM - 10-minute break
+- 10:00 AM - Start Segment 2
+- 10:50 AM - 10-minute break
+- 11:00 AM - Start Segment 3
+- 11:50 AM - 10-minute break
+- 12:00 PM - Start Segment 4
+- 12:50 PM - 10-minute break
+- 1:00 PM - Start Segment 5
+- 1:50 PM - Course Completion
 
-## Hour 1 (11:00-12:00) - Identity & Security: Your Foundation
+## Segment 1 (9:00-9:50) - Identity, Governance & Monitoring
 **Theme: "Identity is the New Security Perimeter"**
-- Entra ID B2B/B2C architecture decisions
-- RBAC done right (no more Owner role!)
-- Key Vault secrets management
-- Managed Identities vs Service Principals
+- Design logging and monitoring solutions
+  - Log Analytics workspace design
+  - Log routing and retention
+  - Monitoring solution architecture
+- Design authentication and authorization
+  - Entra ID B2B/B2C architecture
+  - RBAC and custom roles
+  - Managed Identities vs Service Principals
+- Design governance solutions
+  - Management group hierarchy
+  - Resource tagging strategy
+  - Policy as Code implementation
 
 **Live Demo Flow:**
-1. Entra ID tenant configuration
-2. Custom RBAC role creation
-3. Key Vault with Private Link
-4. System-assigned vs User-assigned MI
+1. Log Analytics workspace setup
+2. Entra ID tenant configuration
+3. Custom RBAC role creation
+4. Policy initiative deployment
 
-## Hour 2 (12:09-1:00) - Data Platform Decisions
+## Segment 2 (10:00-10:50) - Data Storage Solutions
 **Theme: "Right Data, Right Place"**
-- SQL vs NoSQL decision framework
-- Cosmos DB partition design
-- Storage account performance tiers
-- Data protection strategies
+- Design relational data solutions
+  - SQL service tiers and compute
+  - Database scalability patterns
+  - Data protection strategies
+- Design semi-structured/unstructured solutions
+  - Cosmos DB partition design
+  - Storage account performance tiers
+  - Data Lake architecture
+- Design data integration
+  - Data Factory patterns
+  - Synapse Analytics setup
+  - Data mesh architecture
 
 **Live Demo Flow:**
 1. SQL DB elastic pools
 2. Cosmos DB multi-region
 3. Storage account lifecycle
-4. Azure Backup vaults
+4. Data Factory pipeline
 
-## Hour 3 (1:09-2:00) - Infrastructure Patterns That Matter
+## Segment 3 (11:00-11:50) - Business Continuity
+**Theme: "Always Available, Always Compliant"**
+- Design backup and disaster recovery
+  - Azure Backup vault architecture
+  - Cross-region recovery
+  - Hybrid workload protection
+- Design high availability solutions
+  - Compute HA patterns
+  - Database HA architecture
+  - Storage redundancy options
+
+**Live Demo Flow:**
+1. Backup vault configuration
+2. Cross-region replication
+3. Availability Zones setup
+4. Traffic Manager profiles
+
+## Segment 4 (12:00-12:50) - Infrastructure Solutions
 **Theme: "Modern App Architecture Patterns"**
-- Container Apps vs AKS decision tree
-- Event-driven architecture patterns
-- API Management as a front door
-- Integration patterns with Logic Apps
+- Design compute solutions
+  - VM-based architecture
+  - Container Apps vs AKS
+  - Serverless patterns
+- Design application architecture
+  - Event-driven patterns
+  - API Management
+  - Caching strategies
+- Design migrations
+  - Cloud Adoption Framework
+  - Migration assessment
+  - Workload migration patterns
 
 **Live Demo Flow:**
 1. Container Apps with Dapr
 2. Event Grid custom topics
 3. APIM with OAuth2
-4. Logic Apps with managed identity
+4. Migration assessment
 
-## Hour 4 (2:09-3:00) - The Network is the Computer
+## Segment 5 (1:00-1:50) - Network Solutions
 **Theme: "Zero Trust Networking"**
-- Hub-spoke vs Virtual WAN
-- Private Link vs Service Endpoints
-- Load Balancer vs App Gateway
-- Network Security Groups best practices
+- Design connectivity solutions
+  - Hub-spoke vs Virtual WAN
+  - Private Link vs Service Endpoints
+  - Internet connectivity patterns
+- Design network optimization
+  - Load balancing solutions
+  - Network security patterns
+  - Performance optimization
 
 **Live Demo Flow:**
 1. Hub-spoke with Azure CLI
 2. Private Link service setup
 3. Application Gateway WAF
-4. NSG flow logs analysis
-
-## Hour 5 (3:09-4:00) - Business Continuity & Governance
-**Theme: "Always Available, Always Compliant"**
-- Azure Policy as Code
-- Management group hierarchy
-- Cross-region HA patterns
-- Cost optimization techniques
-
-**Live Demo Flow:**
-1. Policy initiatives with Bicep
-2. Management group structure
-3. Traffic Manager profiles
-4. Cost Management budgets
+4. Network performance monitoring
 
 ## Key Focus Areas
 - Every demo uses managed identity
