@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this material, please cite it as below."
+title: "AZ-305 Certification Study Resources"
+type: software
+authors:
+  - family-names: Warner
+    given-names: Tim
+    email: tim@techtrainertim.com
+    website: https://techtrainertim.com
+repository-code: https://github.com/timothywarner/az305
+url: https://github.com/timothywarner/az305
+license: MIT
+date-released: 2026-01-19

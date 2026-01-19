@@ -1,2 +1,9 @@
 ---
 blank_issues_enabled: false
+contact_links:
+  - name: AZ-305 Course Support
+    url: mailto:tim@techtrainertim.com
+    about: Questions about course materials, labs, or access.
+  - name: TechTrainerTim.com
+    url: https://techtrainertim.com
+    about: Official site for additional training resources.
