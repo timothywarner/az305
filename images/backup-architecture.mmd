@@ -1,0 +1,154 @@
+%% AZ-305 Domain 3: Azure Backup Architecture
+%% Reference: Azure Backup architecture, Recovery Services vault
+%% Exam Focus: Backup policies, vault redundancy, cross-region restore
+
+flowchart TB
+    subgraph WORKLOADS["Protected Workloads"]
+        direction TB
+
+        subgraph AZURE_WORKLOADS["Azure Workloads"]
+            AZURE_VM["Azure VMs<br/>Windows / Linux"]
+            AZURE_FILES["Azure Files<br/>File Shares"]
+            SQL_VM["SQL Server in VM<br/>Database Backup"]
+            SAP_HANA["SAP HANA<br/>in Azure VMs"]
+            AKS["AKS Workloads<br/>Persistent Volumes"]
+            MANAGED_DISK["Managed Disks<br/>Snapshot-based"]
+        end
+
+        subgraph PAAS_WORKLOADS["PaaS Workloads"]
+            AZURE_SQL["Azure SQL Database<br/>Automated Backups"]
+            COSMOS["Azure Cosmos DB<br/>Continuous Backup"]
+            POSTGRES["Azure PostgreSQL<br/>Flexible Server"]
+            BLOB["Azure Blobs<br/>Operational Backup"]
+        end
+
+        subgraph HYBRID_WORKLOADS["Hybrid / On-Premises"]
+            ONPREM_VM["On-premises VMs<br/>via MARS Agent"]
+            ONPREM_SQL["On-premises SQL<br/>via MABS/DPM"]
+            ARC_VM["Azure Arc VMs<br/>Hybrid Servers"]
+            ONPREM_FILES["On-premises Files<br/>MARS Agent"]
+        end
+    end
+
+    subgraph AGENTS["Backup Agents & Extensions"]
+        VM_EXTENSION["VM Backup Extension<br/>Snapshot Coordination"]
+        MARS_AGENT["MARS Agent<br/>Files & Folders"]
+        MABS["Microsoft Azure<br/>Backup Server"]
+        DPM["System Center DPM<br/>Enterprise Backup"]
+        WORKLOAD_AGENT["Workload Backup<br/>Extension (SQL/SAP)"]
+    end
+
+    subgraph RSV["Recovery Services Vault"]
+        direction TB
+
+        VAULT_CONFIG["Vault Configuration<br/>Name: mybackup-rsv"]
+
+        subgraph STORAGE_REDUNDANCY["Storage Redundancy Options"]
+            LRS["Locally Redundant (LRS)<br/>3 copies in datacenter<br/>Lowest cost"]
+            ZRS["Zone Redundant (ZRS)<br/>3 copies across zones<br/>Regional protection"]
+            GRS["Geo Redundant (GRS)<br/>6 copies across regions<br/>Cross-region restore"]
+            RAGRS["Read-Access GRS<br/>Secondary region access<br/>Highest durability"]
+        end
+
+        subgraph POLICIES["Backup Policies"]
+            DAILY["Daily Backup<br/>Retain: 7-9999 days"]
+            WEEKLY["Weekly Backup<br/>Sunday retention"]
+            MONTHLY["Monthly Backup<br/>First day of month"]
+            YEARLY["Yearly Backup<br/>Long-term retention"]
+        end
+
+        subgraph SECURITY["Security Features"]
+            SOFT_DELETE["Soft Delete<br/>14-day retention<br/>Always-on option"]
+            IMMUTABLE["Immutable Vault<br/>WORM protection<br/>Ransomware defense"]
+            MUA["Multi-User Auth<br/>Resource Guard<br/>Critical ops protection"]
+            ENCRYPTION["Encryption<br/>Platform or CMK<br/>Data at rest"]
+        end
+    end
+
+    subgraph BACKUP_VAULT["Backup Vault (New)"]
+        BV_CONFIG["Backup Vault<br/>Modern workloads"]
+        BV_DISK["Disk Backup<br/>Incremental snapshots"]
+        BV_BLOB["Blob Backup<br/>Operational backup"]
+        BV_POSTGRES["PostgreSQL Backup<br/>Long-term retention"]
+    end
+
+    subgraph RECOVERY["Recovery Options"]
+        direction TB
+
+        INSTANT["Instant Restore<br/>From snapshot<br/>RTO: Minutes"]
+        VAULT_TIER["Vault-tier Restore<br/>From vault storage<br/>RTO: Hours"]
+        CRR["Cross-Region Restore<br/>From secondary region<br/>DR scenarios"]
+        ALR["Alternate Location<br/>Restore to new VM<br/>Different region/sub"]
+        ITEM_LEVEL["Item-Level Recovery<br/>Files/Folders<br/>SQL databases"]
+    end
+
+    subgraph MONITORING["Monitoring & Reporting"]
+        BACKUP_CENTER["Backup Center<br/>Unified management<br/>Multi-vault view"]
+        ALERTS["Backup Alerts<br/>Job failures<br/>Security warnings"]
+        REPORTS["Backup Reports<br/>Power BI integration<br/>Compliance tracking"]
+    end
+
+    %% Connections from workloads to agents
+    AZURE_VM --> VM_EXTENSION
+    AZURE_FILES --> RSV
+    SQL_VM --> WORKLOAD_AGENT
+    SAP_HANA --> WORKLOAD_AGENT
+    AKS --> RSV
+    MANAGED_DISK --> BV_DISK
+
+    ONPREM_VM --> MARS_AGENT
+    ONPREM_SQL --> MABS
+    ARC_VM --> VM_EXTENSION
+    ONPREM_FILES --> MARS_AGENT
+
+    BLOB --> BV_BLOB
+    POSTGRES --> BV_POSTGRES
+
+    %% Agents to vault
+    VM_EXTENSION --> RSV
+    MARS_AGENT --> RSV
+    MABS --> RSV
+    DPM --> RSV
+    WORKLOAD_AGENT --> RSV
+
+    %% Vault to recovery
+    RSV --> INSTANT
+    RSV --> VAULT_TIER
+    GRS --> CRR
+    RSV --> ALR
+    RSV --> ITEM_LEVEL
+
+    %% Monitoring
+    RSV --> BACKUP_CENTER
+    BACKUP_CENTER --> ALERTS
+    BACKUP_CENTER --> REPORTS
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: GRS is required<br/>for Cross-Region Restore"]
+    NOTE2["**EXAM TIP**: Soft delete protects<br/>against accidental deletion<br/>14 days free retention"]
+    NOTE3["**EXAM TIP**: Immutable vault<br/>cannot be disabled once<br/>locked - use for compliance"]
+
+    %% Styling
+    classDef azureStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef paasStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef hybridStyle fill:#ab47bc,stroke:#7b1fa2,color:#fff
+    classDef agentStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef vaultStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef redundancyStyle fill:#4fc3f7,stroke:#0288d1,color:#000
+    classDef policyStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef securityStyle fill:#ef5350,stroke:#c62828,color:#fff
+    classDef recoveryStyle fill:#81c784,stroke:#388e3c,color:#000
+    classDef monitorStyle fill:#90a4ae,stroke:#546e7a,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class AZURE_VM,AZURE_FILES,SQL_VM,SAP_HANA,AKS,MANAGED_DISK azureStyle
+    class AZURE_SQL,COSMOS,POSTGRES,BLOB paasStyle
+    class ONPREM_VM,ONPREM_SQL,ARC_VM,ONPREM_FILES hybridStyle
+    class VM_EXTENSION,MARS_AGENT,MABS,DPM,WORKLOAD_AGENT agentStyle
+    class VAULT_CONFIG,BV_CONFIG vaultStyle
+    class LRS,ZRS,GRS,RAGRS redundancyStyle
+    class DAILY,WEEKLY,MONTHLY,YEARLY policyStyle
+    class SOFT_DELETE,IMMUTABLE,MUA,ENCRYPTION securityStyle
+    class INSTANT,VAULT_TIER,CRR,ALR,ITEM_LEVEL recoveryStyle
+    class BACKUP_CENTER,ALERTS,REPORTS monitorStyle
+    class NOTE1,NOTE2,NOTE3 noteStyle

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "cosmosAccountName": {
+      "value": "contoso-app"
+    },
+    "primaryLocation": {
+      "value": "eastus"
+    },
+    "additionalLocations": {
+      "value": [
+        "westus2",
+        "northeurope"
+      ]
+    },
+    "enableMultiRegionWrites": {
+      "value": true
+    },
+    "defaultConsistencyLevel": {
+      "value": "Session"
+    },
+    "enableAutomaticFailover": {
+      "value": true
+    },
+    "databaseName": {
+      "value": "appdb"
+    },
+    "containerName": {
+      "value": "items"
+    },
+    "partitionKeyPath": {
+      "value": "/tenantId"
+    },
+    "autoscaleMaxThroughput": {
+      "value": 4000
+    },
+    "enableServerless": {
+      "value": false
+    },
+    "enableAnalyticalStore": {
+      "value": false
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "cosmos-database",
+        "examObjective": "AZ-305-DataStorage"
+      }
+    }
+  }
+}

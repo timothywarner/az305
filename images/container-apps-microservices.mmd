@@ -1,0 +1,166 @@
+%% AZ-305 Domain 4: Container Apps with Dapr and KEDA
+%% Reference: Azure Container Apps microservices architecture
+%% Exam Focus: Serverless containers, Dapr APIs, event-driven scaling
+
+flowchart TB
+    subgraph INGRESS["Ingress Layer"]
+        direction TB
+        INTERNET["Internet<br/>Users"]
+        FRONT_DOOR["Azure Front Door<br/>Global Load Balancing<br/>WAF Protection"]
+    end
+
+    subgraph CONTAINER_ENV["Container Apps Environment"]
+        direction TB
+
+        ENV_CONFIG["Environment Configuration<br/>- Internal/External Ingress<br/>- VNet Integration<br/>- Log Analytics Workspace"]
+
+        subgraph APPS["Container Apps"]
+            direction TB
+
+            subgraph FRONTEND["Frontend Services"]
+                WEB_UI["Web UI App<br/>React/Angular<br/>External Ingress"]
+                API_GW["API Gateway App<br/>Envoy Proxy<br/>Traffic Splitting"]
+            end
+
+            subgraph BACKEND["Backend Microservices"]
+                ORDER_SVC["Order Service<br/>KEDA: HTTP Scaler<br/>Min: 1, Max: 10"]
+                INVENTORY_SVC["Inventory Service<br/>KEDA: Service Bus<br/>Scale to Zero"]
+                PAYMENT_SVC["Payment Service<br/>KEDA: Queue Length<br/>Min: 1"]
+                NOTIFY_SVC["Notification Service<br/>KEDA: Event Hub<br/>Scale to Zero"]
+            end
+
+            subgraph WORKERS["Background Workers"]
+                REPORT_JOB["Report Generator<br/>Scheduled Job<br/>CRON trigger"]
+                CLEANUP_JOB["Cleanup Job<br/>Event-driven Job<br/>Blob trigger"]
+            end
+        end
+
+        subgraph DAPR["Dapr Sidecar Components"]
+            direction TB
+
+            DAPR_SIDECAR["Dapr Sidecar<br/>Port 3500 (HTTP)<br/>Port 50001 (gRPC)"]
+
+            subgraph DAPR_BUILDING["Dapr Building Blocks"]
+                SVC_INVOKE["Service Invocation<br/>mTLS, Retries<br/>Load Balancing"]
+                PUBSUB["Pub/Sub<br/>Event Messaging<br/>At-least-once"]
+                STATE["State Management<br/>Key/Value Store<br/>Concurrency Control"]
+                BINDING["Bindings<br/>Input/Output<br/>External Services"]
+                SECRETS["Secrets<br/>Key Vault Integration<br/>Secure retrieval"]
+            end
+        end
+
+        subgraph REVISIONS["Revision Management"]
+            REV_V1["Revision v1<br/>70% Traffic"]
+            REV_V2["Revision v2<br/>30% Traffic<br/>Canary Deploy"]
+        end
+    end
+
+    subgraph AZURE_SERVICES["Azure Backend Services"]
+        direction TB
+
+        subgraph MESSAGING["Messaging Services"]
+            SERVICE_BUS["Service Bus<br/>Topics/Queues<br/>Dapr Pub/Sub"]
+            EVENT_HUB["Event Hubs<br/>Stream Processing<br/>Dapr Binding"]
+            EVENT_GRID["Event Grid<br/>Event Routing"]
+        end
+
+        subgraph DATA["Data Services"]
+            COSMOS["Cosmos DB<br/>Dapr State Store<br/>Global Distribution"]
+            REDIS["Azure Cache Redis<br/>Dapr State Store<br/>Session/Cache"]
+            SQL["Azure SQL<br/>Relational Data"]
+            STORAGE["Blob Storage<br/>Dapr Binding<br/>File Processing"]
+        end
+
+        subgraph SECURITY["Security Services"]
+            KEY_VAULT["Key Vault<br/>Dapr Secrets<br/>Managed Identity"]
+            MANAGED_ID["Managed Identity<br/>Workload Identity<br/>No credentials"]
+        end
+    end
+
+    subgraph MONITORING["Observability"]
+        direction TB
+        APP_INSIGHTS["Application Insights<br/>Distributed Tracing<br/>APM"]
+        LOG_ANALYTICS["Log Analytics<br/>Container Logs<br/>Dapr Logs"]
+        METRICS["Azure Monitor<br/>Metrics<br/>Auto-scale triggers"]
+    end
+
+    %% Traffic flow
+    INTERNET --> FRONT_DOOR
+    FRONT_DOOR --> WEB_UI
+    FRONT_DOOR --> API_GW
+
+    API_GW --> ORDER_SVC
+    API_GW --> INVENTORY_SVC
+    API_GW --> PAYMENT_SVC
+
+    %% Dapr service invocation
+    ORDER_SVC <-->|Dapr| SVC_INVOKE
+    INVENTORY_SVC <-->|Dapr| SVC_INVOKE
+    PAYMENT_SVC <-->|Dapr| SVC_INVOKE
+
+    %% Pub/Sub
+    ORDER_SVC --> PUBSUB
+    PUBSUB --> SERVICE_BUS
+    SERVICE_BUS --> INVENTORY_SVC
+    SERVICE_BUS --> NOTIFY_SVC
+
+    %% State management
+    ORDER_SVC --> STATE
+    STATE --> COSMOS
+    STATE --> REDIS
+
+    %% Bindings
+    NOTIFY_SVC --> BINDING
+    BINDING --> EVENT_HUB
+
+    %% Secrets
+    PAYMENT_SVC --> SECRETS
+    SECRETS --> KEY_VAULT
+
+    %% Jobs
+    REPORT_JOB --> SQL
+    CLEANUP_JOB --> STORAGE
+
+    %% Monitoring
+    APPS --> APP_INSIGHTS
+    DAPR --> LOG_ANALYTICS
+    APPS --> METRICS
+
+    %% Revision traffic
+    API_GW -.-> REV_V1
+    API_GW -.-> REV_V2
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: Dapr provides<br/>service mesh capabilities<br/>without Kubernetes complexity"]
+    NOTE2["**EXAM TIP**: KEDA enables<br/>scale-to-zero for cost<br/>optimization on event triggers"]
+    NOTE3["**EXAM TIP**: Container Apps<br/>abstracts Kubernetes - no<br/>direct K8s API access"]
+    NOTE4["**EXAM TIP**: Use revisions for<br/>blue-green and canary<br/>deployments with traffic split"]
+
+    %% Styling
+    classDef ingressStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef envStyle fill:#1565c0,stroke:#0d47a1,color:#fff
+    classDef frontendStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef backendStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef workerStyle fill:#78909c,stroke:#455a64,color:#fff
+    classDef daprStyle fill:#ff7043,stroke:#e64a19,color:#fff
+    classDef buildingStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef revisionStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef messagingStyle fill:#f06292,stroke:#c2185b,color:#fff
+    classDef dataStyle fill:#4fc3f7,stroke:#0288d1,color:#000
+    classDef securityStyle fill:#ef5350,stroke:#c62828,color:#fff
+    classDef monitorStyle fill:#90a4ae,stroke:#546e7a,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class INTERNET,FRONT_DOOR ingressStyle
+    class ENV_CONFIG envStyle
+    class WEB_UI,API_GW frontendStyle
+    class ORDER_SVC,INVENTORY_SVC,PAYMENT_SVC,NOTIFY_SVC backendStyle
+    class REPORT_JOB,CLEANUP_JOB workerStyle
+    class DAPR_SIDECAR daprStyle
+    class SVC_INVOKE,PUBSUB,STATE,BINDING,SECRETS buildingStyle
+    class REV_V1,REV_V2 revisionStyle
+    class SERVICE_BUS,EVENT_HUB,EVENT_GRID messagingStyle
+    class COSMOS,REDIS,SQL,STORAGE dataStyle
+    class KEY_VAULT,MANAGED_ID securityStyle
+    class APP_INSIGHTS,LOG_ANALYTICS,METRICS monitorStyle
+    class NOTE1,NOTE2,NOTE3,NOTE4 noteStyle

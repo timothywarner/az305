@@ -1,0 +1,147 @@
+%% AZ-305 Domain 4: Hub-Spoke Network Topology
+%% Reference: Azure Architecture Center hub-spoke pattern, CAF networking
+%% Exam Focus: VNet peering, Azure Firewall, ExpressRoute, VPN
+
+flowchart TB
+    subgraph ONPREM["On-Premises Network"]
+        direction TB
+        ONPREM_DC["Corporate Datacenter<br/>10.100.0.0/16"]
+        ONPREM_USERS["Enterprise Users"]
+        ONPREM_APPS["Legacy Applications"]
+    end
+
+    subgraph HYBRID_CONN["Hybrid Connectivity"]
+        direction TB
+
+        ER["ExpressRoute Circuit<br/>Private Peering<br/>1-10 Gbps"]
+        ER_GW["ExpressRoute Gateway<br/>ErGw2AZ (Zone-redundant)"]
+
+        VPN["Site-to-Site VPN<br/>IPsec/IKE<br/>Backup connectivity"]
+        VPN_GW["VPN Gateway<br/>VpnGw2AZ"]
+    end
+
+    subgraph HUB["Hub Virtual Network (10.0.0.0/16)"]
+        direction TB
+
+        subgraph HUB_SUBNETS["Hub Subnets"]
+            GW_SUBNET["GatewaySubnet<br/>10.0.1.0/24<br/>ER + VPN Gateways"]
+            FW_SUBNET["AzureFirewallSubnet<br/>10.0.2.0/24<br/>Min /26 required"]
+            BASTION_SUBNET["AzureBastionSubnet<br/>10.0.3.0/24<br/>Secure RDP/SSH"]
+            MGMT_SUBNET["Management Subnet<br/>10.0.4.0/24<br/>Jump boxes, tools"]
+        end
+
+        subgraph SHARED_SERVICES["Shared Services"]
+            FIREWALL["Azure Firewall<br/>Premium SKU<br/>IDPS, TLS inspection"]
+            BASTION["Azure Bastion<br/>Standard SKU<br/>Native RDP/SSH"]
+            DNS["Private DNS Zones<br/>privatelink.*.azure.net<br/>Custom domains"]
+            KV["Shared Key Vault<br/>Certificates, secrets"]
+        end
+
+        FW_POLICY["Firewall Policy<br/>Network rules<br/>Application rules<br/>DNAT rules"]
+    end
+
+    subgraph SPOKE1["Spoke 1 - Production (10.1.0.0/16)"]
+        direction TB
+
+        SPOKE1_WEB["Web Tier Subnet<br/>10.1.1.0/24"]
+        SPOKE1_APP["App Tier Subnet<br/>10.1.2.0/24"]
+        SPOKE1_DATA["Data Tier Subnet<br/>10.1.3.0/24"]
+
+        SPOKE1_NSG["NSG: Deny Inbound<br/>Allow via Firewall"]
+        SPOKE1_UDR["UDR: 0.0.0.0/0<br/>-> Azure Firewall"]
+
+        SPOKE1_PEP["Private Endpoints<br/>Storage, SQL, KV"]
+    end
+
+    subgraph SPOKE2["Spoke 2 - Development (10.2.0.0/16)"]
+        direction TB
+
+        SPOKE2_DEV["Dev Environment<br/>10.2.1.0/24"]
+        SPOKE2_TEST["Test Environment<br/>10.2.2.0/24"]
+
+        SPOKE2_NSG["NSG: Segmentation"]
+        SPOKE2_UDR["UDR: Route to Hub"]
+    end
+
+    subgraph SPOKE3["Spoke 3 - DMZ (10.3.0.0/16)"]
+        direction TB
+
+        SPOKE3_DMZ["DMZ Subnet<br/>10.3.1.0/24"]
+        APP_GW["Application Gateway<br/>WAF_v2 SKU<br/>Public IP"]
+        SPOKE3_UDR["UDR: Internet via<br/>Azure Firewall"]
+    end
+
+    subgraph SPOKE4["Spoke 4 - Shared Services (10.4.0.0/16)"]
+        direction TB
+
+        SPOKE4_AD["AD DS Subnet<br/>Domain Controllers"]
+        SPOKE4_MGMT["Management Tools<br/>SCCM, WSUS"]
+    end
+
+    subgraph INTERNET["Internet"]
+        USERS["External Users"]
+        PARTNERS["Partner Networks"]
+    end
+
+    %% On-premises connectivity
+    ONPREM_DC --> ER
+    ONPREM_DC --> VPN
+    ER --> ER_GW
+    VPN --> VPN_GW
+    ER_GW --> GW_SUBNET
+    VPN_GW --> GW_SUBNET
+
+    %% Hub-Spoke peering
+    HUB <-->|VNet Peering<br/>Allow Gateway Transit| SPOKE1
+    HUB <-->|VNet Peering<br/>Use Remote Gateway| SPOKE2
+    HUB <-->|VNet Peering| SPOKE3
+    HUB <-->|VNet Peering| SPOKE4
+
+    %% Traffic flows through firewall
+    SPOKE1 --> FIREWALL
+    SPOKE2 --> FIREWALL
+    SPOKE3 --> FIREWALL
+    SPOKE4 --> FIREWALL
+
+    FIREWALL --> INTERNET
+    FIREWALL --> ONPREM_DC
+
+    %% Application Gateway to backend
+    USERS --> APP_GW
+    APP_GW --> SPOKE1_WEB
+
+    %% Firewall policy
+    FW_POLICY --> FIREWALL
+
+    %% DNS resolution
+    DNS -.-> SPOKE1_PEP
+
+    %% Exam decision points
+    NOTE1["**EXAM TIP**: VNet peering is<br/>non-transitive - spokes cannot<br/>communicate directly without<br/>Firewall or NVA routing"]
+    NOTE2["**EXAM TIP**: Use Gateway Transit<br/>on hub peering to share<br/>ExpressRoute/VPN with spokes"]
+    NOTE3["**EXAM TIP**: Azure Firewall needs<br/>dedicated /26 subnet minimum<br/>named 'AzureFirewallSubnet'"]
+    NOTE4["**EXAM TIP**: UDRs required to<br/>force traffic through Firewall<br/>Default route 0.0.0.0/0 -> FW"]
+
+    %% Styling
+    classDef onpremStyle fill:#78909c,stroke:#455a64,color:#fff
+    classDef connectStyle fill:#ab47bc,stroke:#7b1fa2,color:#fff
+    classDef hubStyle fill:#1565c0,stroke:#0d47a1,color:#fff
+    classDef subnetStyle fill:#e3f2fd,stroke:#1976d2,color:#000
+    classDef serviceStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef spokeStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef spoke2Style fill:#4fc3f7,stroke:#0288d1,color:#000
+    classDef dmzStyle fill:#ef5350,stroke:#c62828,color:#fff
+    classDef sharedStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef internetStyle fill:#90a4ae,stroke:#546e7a,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class ONPREM_DC,ONPREM_USERS,ONPREM_APPS onpremStyle
+    class ER,ER_GW,VPN,VPN_GW connectStyle
+    class GW_SUBNET,FW_SUBNET,BASTION_SUBNET,MGMT_SUBNET subnetStyle
+    class FIREWALL,BASTION,DNS,KV,FW_POLICY serviceStyle
+    class SPOKE1_WEB,SPOKE1_APP,SPOKE1_DATA,SPOKE1_NSG,SPOKE1_UDR,SPOKE1_PEP spokeStyle
+    class SPOKE2_DEV,SPOKE2_TEST,SPOKE2_NSG,SPOKE2_UDR spoke2Style
+    class SPOKE3_DMZ,APP_GW,SPOKE3_UDR dmzStyle
+    class SPOKE4_AD,SPOKE4_MGMT sharedStyle
+    class USERS,PARTNERS internetStyle
+    class NOTE1,NOTE2,NOTE3,NOTE4 noteStyle

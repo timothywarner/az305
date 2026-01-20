@@ -1,0 +1,171 @@
+%% AZ-305 Domain 4: Private Link/Private Endpoint Connectivity Patterns
+%% Reference: Azure Private Link architecture, network isolation
+%% Exam Focus: Private endpoints, DNS resolution, cross-region patterns
+
+flowchart TB
+    subgraph ONPREM["On-Premises Network"]
+        direction TB
+        ONPREM_DNS["On-Premises DNS<br/>Conditional Forwarder"]
+        ONPREM_CLIENT["On-Premises Client<br/>10.100.1.10"]
+        ONPREM_APP["Legacy Application"]
+    end
+
+    subgraph HUB_VNET["Hub Virtual Network (10.0.0.0/16)"]
+        direction TB
+
+        subgraph CONNECTIVITY["Connectivity Services"]
+            ER_GW["ExpressRoute Gateway"]
+            VPN_GW["VPN Gateway"]
+            FIREWALL["Azure Firewall"]
+        end
+
+        subgraph DNS_INFRA["DNS Infrastructure"]
+            DNS_RESOLVER["Private DNS Resolver"]
+            DNS_INBOUND["Inbound Endpoint<br/>10.0.5.4"]
+            DNS_OUTBOUND["Outbound Endpoint<br/>Forwarding Rules"]
+        end
+
+        PRIVATE_DNS_ZONES["Private DNS Zones<br/>Linked to VNets"]
+    end
+
+    subgraph SPOKE1["Spoke VNet - Application (10.1.0.0/16)"]
+        direction TB
+
+        APP_SUBNET["Application Subnet<br/>10.1.1.0/24"]
+        APP_VM["Application VM<br/>10.1.1.10"]
+
+        PE_SUBNET["Private Endpoint Subnet<br/>10.1.2.0/24<br/>Disable Network Policies"]
+
+        subgraph PES_APP["Private Endpoints"]
+            PE_STORAGE["PE: Storage Account<br/>10.1.2.10<br/>blob.core.windows.net"]
+            PE_SQL["PE: Azure SQL<br/>10.1.2.11<br/>database.windows.net"]
+            PE_KV["PE: Key Vault<br/>10.1.2.12<br/>vault.azure.net"]
+        end
+    end
+
+    subgraph SPOKE2["Spoke VNet - Data Platform (10.2.0.0/16)"]
+        direction TB
+
+        DATA_SUBNET["Data Subnet<br/>10.2.1.0/24"]
+        SYNAPSE_VM["Synapse Integration<br/>Runtime VM"]
+
+        PE_SUBNET2["Private Endpoint Subnet<br/>10.2.2.0/24"]
+
+        subgraph PES_DATA["Private Endpoints"]
+            PE_ADLS["PE: ADLS Gen2<br/>10.2.2.10<br/>dfs.core.windows.net"]
+            PE_SYNAPSE["PE: Synapse Analytics<br/>10.2.2.11<br/>sql.azuresynapse.net"]
+            PE_COSMOS["PE: Cosmos DB<br/>10.2.2.12<br/>documents.azure.com"]
+        end
+    end
+
+    subgraph AZURE_SERVICES["Azure PaaS Services (Public)"]
+        direction TB
+
+        STORAGE["Storage Account<br/>mystorageacct<br/>Public endpoint disabled"]
+        SQL_DB["Azure SQL Database<br/>mysqlserver<br/>Public access denied"]
+        KEY_VAULT["Key Vault<br/>mykeyvault<br/>Network ACLs applied"]
+        ADLS["ADLS Gen2<br/>mydatalake<br/>Private access only"]
+        SYNAPSE["Synapse Workspace<br/>Managed VNet enabled"]
+        COSMOS_DB["Cosmos DB<br/>Global distribution<br/>Private endpoints per region"]
+    end
+
+    subgraph DNS_RESOLUTION["DNS Resolution Flow"]
+        direction LR
+
+        DNS_QUERY["1. DNS Query:<br/>mystorageacct.blob.core.windows.net"]
+        DNS_CNAME["2. CNAME to:<br/>mystorageacct.privatelink.blob.core.windows.net"]
+        DNS_PRIVATE["3. Private DNS Zone<br/>resolves to: 10.1.2.10"]
+        DNS_CONNECT["4. Traffic flows to<br/>Private Endpoint IP"]
+    end
+
+    subgraph PATTERNS["Common Connectivity Patterns"]
+        direction TB
+
+        PATTERN1["**Hub-Spoke Pattern**<br/>- PEs in spokes<br/>- DNS zones in hub<br/>- Cross-spoke via firewall"]
+
+        PATTERN2["**Centralized PE Pattern**<br/>- All PEs in hub<br/>- Shared by all spokes<br/>- Simplified DNS"]
+
+        PATTERN3["**Regional Pattern**<br/>- PE per region<br/>- Local DNS resolution<br/>- Latency optimization"]
+
+        PATTERN4["**Service Endpoint vs PE**<br/>- SE: Traffic stays on MS backbone<br/>- PE: Private IP in your VNet<br/>- PE: Required for on-prem access"]
+    end
+
+    subgraph PRIVATE_DNS_CONFIG["Private DNS Zone Configuration"]
+        direction TB
+
+        BLOB_ZONE["privatelink.blob.core.windows.net<br/>A record: mystorageacct -> 10.1.2.10"]
+        SQL_ZONE["privatelink.database.windows.net<br/>A record: mysqlserver -> 10.1.2.11"]
+        KV_ZONE["privatelink.vaultcore.azure.net<br/>A record: mykeyvault -> 10.1.2.12"]
+        DFS_ZONE["privatelink.dfs.core.windows.net<br/>A record: mydatalake -> 10.2.2.10"]
+
+        VNET_LINK["VNet Links<br/>Hub + All Spokes<br/>Auto-registration disabled"]
+    end
+
+    %% On-premises connectivity
+    ONPREM_DNS -->|Conditional Forward| DNS_INBOUND
+    ONPREM_CLIENT --> ER_GW
+    ER_GW --> FIREWALL
+
+    %% Hub DNS resolution
+    DNS_RESOLVER --> DNS_INBOUND
+    DNS_RESOLVER --> DNS_OUTBOUND
+    DNS_OUTBOUND --> PRIVATE_DNS_ZONES
+
+    %% VNet peering
+    HUB_VNET <-->|VNet Peering| SPOKE1
+    HUB_VNET <-->|VNet Peering| SPOKE2
+
+    %% Private endpoint connections
+    PE_STORAGE --> STORAGE
+    PE_SQL --> SQL_DB
+    PE_KV --> KEY_VAULT
+    PE_ADLS --> ADLS
+    PE_SYNAPSE --> SYNAPSE
+    PE_COSMOS --> COSMOS_DB
+
+    %% Application to PE
+    APP_VM --> PE_STORAGE
+    APP_VM --> PE_SQL
+    APP_VM --> PE_KV
+    SYNAPSE_VM --> PE_ADLS
+    SYNAPSE_VM --> PE_SYNAPSE
+
+    %% DNS resolution flow
+    DNS_QUERY --> DNS_CNAME
+    DNS_CNAME --> DNS_PRIVATE
+    DNS_PRIVATE --> DNS_CONNECT
+
+    %% DNS zone links
+    BLOB_ZONE --> VNET_LINK
+    SQL_ZONE --> VNET_LINK
+    KV_ZONE --> VNET_LINK
+    DFS_ZONE --> VNET_LINK
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: Private Endpoints<br/>require dedicated subnet with<br/>network policies disabled"]
+    NOTE2["**EXAM TIP**: DNS resolution is critical<br/>Private DNS zones must be<br/>linked to all consuming VNets"]
+    NOTE3["**EXAM TIP**: On-prem access requires<br/>conditional DNS forwarding<br/>to Azure DNS resolver"]
+    NOTE4["**EXAM TIP**: Disable public access<br/>on PaaS services after<br/>configuring private endpoints"]
+
+    %% Styling
+    classDef onpremStyle fill:#78909c,stroke:#455a64,color:#fff
+    classDef hubStyle fill:#1565c0,stroke:#0d47a1,color:#fff
+    classDef dnsStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef spokeStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef peStyle fill:#ff7043,stroke:#e64a19,color:#fff
+    classDef paasStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef flowStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef patternStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef zoneStyle fill:#f06292,stroke:#c2185b,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class ONPREM_DNS,ONPREM_CLIENT,ONPREM_APP onpremStyle
+    class ER_GW,VPN_GW,FIREWALL hubStyle
+    class DNS_RESOLVER,DNS_INBOUND,DNS_OUTBOUND,PRIVATE_DNS_ZONES dnsStyle
+    class APP_SUBNET,APP_VM,PE_SUBNET,DATA_SUBNET,SYNAPSE_VM,PE_SUBNET2 spokeStyle
+    class PE_STORAGE,PE_SQL,PE_KV,PE_ADLS,PE_SYNAPSE,PE_COSMOS peStyle
+    class STORAGE,SQL_DB,KEY_VAULT,ADLS,SYNAPSE,COSMOS_DB paasStyle
+    class DNS_QUERY,DNS_CNAME,DNS_PRIVATE,DNS_CONNECT flowStyle
+    class PATTERN1,PATTERN2,PATTERN3,PATTERN4 patternStyle
+    class BLOB_ZONE,SQL_ZONE,KV_ZONE,DFS_ZONE,VNET_LINK zoneStyle
+    class NOTE1,NOTE2,NOTE3,NOTE4 noteStyle

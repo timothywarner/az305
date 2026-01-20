@@ -1,0 +1,414 @@
+// =============================================================================
+// FILE: application-insights.kql
+// SYNOPSIS: Application Insights queries for application monitoring
+// DESCRIPTION:
+//   Collection of KQL queries for Application Insights analysis:
+//   - Request performance and failure analysis
+//   - Exception tracking and correlation
+//   - Dependency performance monitoring
+//   - User behavior and session analysis
+//   - Application health dashboards
+//
+// AZ-305 EXAM OBJECTIVES:
+//   - Design application monitoring solutions
+//   - Implement Application Insights for application performance management
+//   - Configure distributed tracing and correlation
+//   - Design for observability and troubleshooting
+//
+// PREREQUISITES:
+//   - Application Insights resource configured
+//   - Application SDK or auto-instrumentation enabled
+//   - Appropriate access to Application Insights data
+//
+// TABLES USED:
+//   - requests: HTTP request telemetry
+//   - exceptions: Exception telemetry
+//   - dependencies: Dependency calls (SQL, HTTP, etc.)
+//   - traces: Custom trace telemetry
+//   - customEvents: Custom events
+//   - pageViews: Browser page view telemetry
+//   - performanceCounters: Server performance counters
+//
+// NOTES:
+//   These queries use classic Application Insights table names.
+//   For workspace-based Application Insights, tables may have
+//   different names (e.g., AppRequests, AppExceptions).
+//
+// REFERENCES:
+//   - https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview
+//   - https://learn.microsoft.com/azure/azure-monitor/logs/log-query-overview
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// QUERY 1: Request Performance Summary
+// -----------------------------------------------------------------------------
+// WHY: Provides an overview of application request performance.
+// Understanding average and percentile response times helps identify
+// performance issues and validate SLA compliance.
+// -----------------------------------------------------------------------------
+requests
+| where timestamp > ago(24h)
+| summarize
+    RequestCount = sum(itemCount),
+    AvgDuration = avg(duration),
+    P50Duration = percentile(duration, 50),
+    P95Duration = percentile(duration, 95),
+    P99Duration = percentile(duration, 99),
+    FailureRate = round(100.0 * countif(success == false) / count(), 2)
+    by name
+| sort by RequestCount desc
+| take 20
+| project
+    Operation = name,
+    RequestCount,
+    AvgDuration = round(AvgDuration, 2),
+    P50Duration = round(P50Duration, 2),
+    P95Duration = round(P95Duration, 2),
+    P99Duration = round(P99Duration, 2),
+    FailureRate
+
+// -----------------------------------------------------------------------------
+// QUERY 2: Failed Requests Analysis
+// -----------------------------------------------------------------------------
+// WHY: Understanding failure patterns is essential for reliability.
+// Grouping failures by operation and result code helps prioritize
+// fixes based on impact and frequency.
+// -----------------------------------------------------------------------------
+requests
+| where timestamp > ago(24h)
+| where success == false
+| summarize
+    FailureCount = sum(itemCount)
+    by name, resultCode
+| sort by FailureCount desc
+| take 20
+| project Operation = name, ResultCode = resultCode, FailureCount
+
+// -----------------------------------------------------------------------------
+// QUERY 3: Failed Requests with Exception Correlation
+// -----------------------------------------------------------------------------
+// WHY: Correlating failed requests with their exceptions provides
+// context for debugging. The autocluster function groups similar
+// failures to identify patterns.
+// -----------------------------------------------------------------------------
+requests
+| where timestamp > ago(24h)
+| where success == false
+| project name, operation_Id
+| join kind=inner (
+    exceptions
+    | where timestamp > ago(24h)
+    | project problemId, outerMessage, operation_Id
+) on operation_Id
+| summarize
+    FailureCount = count()
+    by name, problemId, outerMessage
+| sort by FailureCount desc
+| take 20
+
+// -----------------------------------------------------------------------------
+// QUERY 4: Exception Summary by Type
+// -----------------------------------------------------------------------------
+// WHY: Identifying the most common exception types helps prioritize
+// code fixes. The problemId groups similar exceptions regardless
+// of message variations.
+// -----------------------------------------------------------------------------
+exceptions
+| where timestamp > ago(24h)
+| summarize
+    ExceptionCount = sum(itemCount)
+    by type, problemId, outerMessage
+| sort by ExceptionCount desc
+| take 20
+| project ExceptionType = type, ProblemId = problemId, Message = outerMessage, ExceptionCount
+
+// -----------------------------------------------------------------------------
+// QUERY 5: Top 10 Operations with Most Exceptions
+// -----------------------------------------------------------------------------
+// WHY: Operations with high exception rates indicate code quality
+// issues or external dependency problems. Focusing on these
+// operations provides the best ROI for debugging effort.
+// -----------------------------------------------------------------------------
+exceptions
+| where timestamp > ago(24h)
+| summarize ExceptionCount = sum(itemCount) by operation_Name
+| sort by ExceptionCount desc
+| take 10
+| project Operation = operation_Name, ExceptionCount
+
+// -----------------------------------------------------------------------------
+// QUERY 6: Server Exception Time Series
+// -----------------------------------------------------------------------------
+// WHY: Time-based exception analysis helps identify patterns such
+// as deployments, load spikes, or scheduled job failures that
+// correlate with increased exception rates.
+// -----------------------------------------------------------------------------
+exceptions
+| where timestamp > ago(7d)
+| where client_Type != 'Browser'  // Server-side only
+| summarize ExceptionCount = sum(itemCount) by bin(timestamp, 15m)
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 7: Dependency Performance Analysis
+// -----------------------------------------------------------------------------
+// WHY: External dependencies (databases, APIs, services) often
+// cause application slowdowns. Identifying slow dependencies
+// enables targeted optimization and caching strategies.
+// -----------------------------------------------------------------------------
+dependencies
+| where timestamp > ago(24h)
+| summarize
+    CallCount = sum(itemCount),
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95),
+    FailureRate = round(100.0 * countif(success == false) / count(), 2)
+    by type, target, name
+| sort by AvgDuration desc
+| take 20
+| project
+    DependencyType = type,
+    Target = target,
+    Name = name,
+    CallCount,
+    AvgDuration = round(AvgDuration, 2),
+    P95Duration = round(P95Duration, 2),
+    FailureRate
+
+// -----------------------------------------------------------------------------
+// QUERY 8: Slow Dependency Calls
+// -----------------------------------------------------------------------------
+// WHY: Individual slow dependency calls impact user experience.
+// Identifying specific slow calls with their context helps
+// optimize queries or add appropriate caching.
+// -----------------------------------------------------------------------------
+dependencies
+| where timestamp > ago(24h)
+| where duration > 5000  // Calls taking more than 5 seconds
+| project
+    timestamp,
+    type,
+    target,
+    name,
+    duration,
+    success,
+    operation_Id,
+    operation_Name
+| sort by duration desc
+| take 50
+
+// -----------------------------------------------------------------------------
+// QUERY 9: Request Failure Rate Trend Comparison
+// -----------------------------------------------------------------------------
+// WHY: Comparing current failure rates to historical patterns helps
+// detect regressions. Significant increases may indicate deployment
+// issues or infrastructure problems.
+// -----------------------------------------------------------------------------
+let today = requests
+| where timestamp > ago(1h)
+| summarize
+    CurrentHour_Requests = count(),
+    CurrentHour_Failures = countif(success == false)
+| extend CurrentHour_FailureRate = round(100.0 * CurrentHour_Failures / CurrentHour_Requests, 2);
+
+let yesterday = requests
+| where timestamp between(ago(25h) .. ago(24h))
+| summarize
+    YesterdayHour_Requests = count(),
+    YesterdayHour_Failures = countif(success == false)
+| extend YesterdayHour_FailureRate = round(100.0 * YesterdayHour_Failures / YesterdayHour_Requests, 2);
+
+today
+| extend dummy = 1
+| join kind=inner (yesterday | extend dummy = 1) on dummy
+| project-away dummy, dummy1
+| extend FailureRateDelta = CurrentHour_FailureRate - YesterdayHour_FailureRate
+| project
+    CurrentHour_Requests,
+    CurrentHour_FailureRate,
+    YesterdayHour_Requests,
+    YesterdayHour_FailureRate,
+    FailureRateDelta
+
+// -----------------------------------------------------------------------------
+// QUERY 10: End-to-End Transaction Tracing
+// -----------------------------------------------------------------------------
+// WHY: Distributed tracing correlates requests, dependencies, and
+// exceptions across service boundaries. Essential for troubleshooting
+// complex microservices architectures.
+// -----------------------------------------------------------------------------
+let TargetOperationId = "your-operation-id-here";  // Replace with actual ID
+union requests, dependencies, exceptions, traces
+| where operation_Id == TargetOperationId
+| project
+    timestamp,
+    itemType,
+    name,
+    duration,
+    success,
+    message,
+    operation_Name,
+    operation_ParentId
+| sort by timestamp asc
+
+// -----------------------------------------------------------------------------
+// QUERY 11: Availability Test Results
+// -----------------------------------------------------------------------------
+// WHY: Availability tests monitor endpoint health from multiple
+// locations. Failed tests indicate outages or performance issues
+// affecting users in specific regions.
+// -----------------------------------------------------------------------------
+availabilityResults
+| where timestamp > ago(24h)
+| summarize
+    TotalTests = count(),
+    SuccessfulTests = countif(success == true),
+    FailedTests = countif(success == false),
+    AvgDuration = avg(duration)
+    by name, location
+| extend SuccessRate = round(100.0 * SuccessfulTests / TotalTests, 2)
+| project
+    TestName = name,
+    Location = location,
+    TotalTests,
+    SuccessRate,
+    AvgDuration = round(AvgDuration, 2)
+| sort by SuccessRate asc
+
+// -----------------------------------------------------------------------------
+// QUERY 12: Browser Page Load Performance
+// -----------------------------------------------------------------------------
+// WHY: Client-side page load times directly impact user experience.
+// Slow pages increase bounce rates and reduce conversion. Tracking
+// by page helps prioritize frontend optimization.
+// -----------------------------------------------------------------------------
+pageViews
+| where timestamp > ago(24h)
+| summarize
+    Views = sum(itemCount),
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95)
+    by name
+| where Views > 10  // Filter out low-traffic pages
+| sort by Views desc
+| take 20
+| project
+    Page = name,
+    Views,
+    AvgDuration = round(AvgDuration, 2),
+    P95Duration = round(P95Duration, 2)
+
+// -----------------------------------------------------------------------------
+// QUERY 13: User Session Analysis
+// -----------------------------------------------------------------------------
+// WHY: Understanding session patterns helps with capacity planning
+// and identifying user experience issues. Short sessions may
+// indicate usability problems or errors.
+// -----------------------------------------------------------------------------
+pageViews
+| where timestamp > ago(7d)
+| summarize
+    SessionPageViews = count(),
+    SessionDuration = max(timestamp) - min(timestamp)
+    by session_Id
+| summarize
+    TotalSessions = count(),
+    AvgPagesPerSession = avg(SessionPageViews),
+    AvgSessionDuration = avg(SessionDuration)
+| project
+    TotalSessions,
+    AvgPagesPerSession = round(AvgPagesPerSession, 1),
+    AvgSessionDurationMinutes = round(AvgSessionDuration / 1m, 1)
+
+// -----------------------------------------------------------------------------
+// QUERY 14: Custom Events Tracking
+// -----------------------------------------------------------------------------
+// WHY: Custom events track business-specific actions like purchases,
+// sign-ups, or feature usage. Analyzing these helps understand
+// user behavior and feature adoption.
+// -----------------------------------------------------------------------------
+customEvents
+| where timestamp > ago(24h)
+| summarize
+    EventCount = sum(itemCount)
+    by name
+| sort by EventCount desc
+| take 20
+| project EventName = name, EventCount
+
+// -----------------------------------------------------------------------------
+// QUERY 15: Application Health Dashboard Query
+// -----------------------------------------------------------------------------
+// WHY: Provides a single-view health summary suitable for dashboards.
+// Combines request rate, error rate, and response times for quick
+// health assessment.
+// -----------------------------------------------------------------------------
+let TimeRange = 1h;
+let RequestStats = requests
+| where timestamp > ago(TimeRange)
+| summarize
+    RequestCount = sum(itemCount),
+    FailedRequests = sumif(itemCount, success == false),
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95);
+
+let ExceptionStats = exceptions
+| where timestamp > ago(TimeRange)
+| summarize ExceptionCount = sum(itemCount);
+
+let DependencyStats = dependencies
+| where timestamp > ago(TimeRange)
+| summarize
+    DependencyCallCount = sum(itemCount),
+    FailedDependencies = sumif(itemCount, success == false),
+    AvgDependencyDuration = avg(duration);
+
+RequestStats
+| extend dummy = 1
+| join (ExceptionStats | extend dummy = 1) on dummy
+| join (DependencyStats | extend dummy = 1) on dummy
+| project-away dummy, dummy1, dummy2
+| extend
+    RequestErrorRate = round(100.0 * FailedRequests / RequestCount, 2),
+    DependencyErrorRate = round(100.0 * FailedDependencies / DependencyCallCount, 2),
+    HealthStatus = case(
+        (100.0 * FailedRequests / RequestCount) > 10, "Critical",
+        (100.0 * FailedRequests / RequestCount) > 5, "Warning",
+        "Healthy"
+    )
+| project
+    RequestCount,
+    RequestErrorRate,
+    AvgRequestDuration = round(AvgDuration, 2),
+    P95RequestDuration = round(P95Duration, 2),
+    ExceptionCount,
+    DependencyCallCount,
+    DependencyErrorRate,
+    AvgDependencyDuration = round(AvgDependencyDuration, 2),
+    HealthStatus
+
+// -----------------------------------------------------------------------------
+// QUERY 16: Request Anomaly Detection
+// -----------------------------------------------------------------------------
+// WHY: Automated anomaly detection identifies unusual patterns
+// without requiring manual threshold configuration. Useful for
+// detecting issues that don't breach static alert thresholds.
+// -----------------------------------------------------------------------------
+let LookbackDays = 7d;
+requests
+| where timestamp > ago(LookbackDays)
+| make-series
+    RequestCount = count() default = 0,
+    AvgDuration = avg(duration) default = 0,
+    ErrorCount = countif(success == false) default = 0
+    on timestamp
+    in range(ago(LookbackDays), now(), 1h)
+| extend
+    (CountAnomalies, CountScore) = series_decompose_anomalies(RequestCount),
+    (DurationAnomalies, DurationScore) = series_decompose_anomalies(AvgDuration),
+    (ErrorAnomalies, ErrorScore) = series_decompose_anomalies(ErrorCount)
+| project timestamp, RequestCount, CountAnomalies, AvgDuration, DurationAnomalies, ErrorCount, ErrorAnomalies
+
+// =============================================================================
+// END OF FILE
+// =============================================================================

@@ -1,0 +1,189 @@
+%% AZ-305 Domain 4: Azure Landing Zone Architecture (CAF)
+%% Reference: Cloud Adoption Framework, Enterprise-Scale Landing Zone
+%% Exam Focus: Resource organization, governance, connectivity, security
+
+flowchart TB
+    subgraph TENANT["Azure AD Tenant"]
+        direction TB
+
+        subgraph MG_HIERARCHY["Management Group Hierarchy"]
+            ROOT_MG["Tenant Root Group"]
+
+            INTERMEDIATE["Intermediate MG<br/>(Optional)"]
+
+            subgraph PLATFORM_MGS["Platform Management Groups"]
+                PLATFORM_MG["Platform"]
+                IDENTITY_MG["Identity"]
+                MANAGEMENT_MG["Management"]
+                CONNECTIVITY_MG["Connectivity"]
+            end
+
+            subgraph LANDING_ZONE_MGS["Landing Zone Management Groups"]
+                LZ_MG["Landing Zones"]
+                CORP_MG["Corp<br/>Internal Workloads"]
+                ONLINE_MG["Online<br/>Internet-facing"]
+            end
+
+            SANDBOX_MG["Sandboxes"]
+            DECOMM_MG["Decommissioned"]
+        end
+    end
+
+    subgraph PLATFORM_SUBS["Platform Subscriptions"]
+        direction TB
+
+        subgraph IDENTITY_SUB["Identity Subscription"]
+            AD_DS["Active Directory<br/>Domain Services"]
+            ENTRA_CONNECT["Entra ID Connect<br/>Hybrid Identity"]
+            PKI["PKI Services<br/>Certificate Authority"]
+        end
+
+        subgraph MGMT_SUB["Management Subscription"]
+            LOG_ANALYTICS["Log Analytics<br/>Workspace"]
+            AUTOMATION["Automation Account<br/>Update Management"]
+            MONITOR["Azure Monitor<br/>Alerts & Dashboards"]
+            SENTINEL_WS["Microsoft Sentinel<br/>SIEM/SOAR"]
+            BACKUP_VAULT["Recovery Services<br/>Central Vault"]
+        end
+
+        subgraph CONN_SUB["Connectivity Subscription"]
+            subgraph HUB_VNET["Hub Virtual Network"]
+                ER_GW["ExpressRoute<br/>Gateway"]
+                VPN_GW["VPN Gateway"]
+                FIREWALL["Azure Firewall<br/>Premium"]
+                BASTION["Azure Bastion"]
+                DNS_RESOLVER["Private DNS<br/>Resolver"]
+            end
+
+            DNS_ZONES["Private DNS Zones<br/>*.privatelink.azure.net"]
+            DDOS["DDoS Protection<br/>Plan"]
+        end
+    end
+
+    subgraph APP_SUBS["Application Landing Zone Subscriptions"]
+        direction TB
+
+        subgraph CORP_SUBS["Corp Landing Zones"]
+            CORP_PROD["Corp-Prod-001<br/>Production Workload"]
+            CORP_DEV["Corp-Dev-001<br/>Development"]
+            CORP_SAP["Corp-SAP-001<br/>SAP Systems"]
+        end
+
+        subgraph ONLINE_SUBS["Online Landing Zones"]
+            ONLINE_PROD["Online-Prod-001<br/>Public Web App"]
+            ONLINE_API["Online-API-001<br/>Public APIs"]
+        end
+
+        CORP_SPOKE["Spoke VNets<br/>Peered to Hub<br/>Private connectivity"]
+        ONLINE_SPOKE["Spoke VNets<br/>Public ingress via<br/>App Gateway/Front Door"]
+    end
+
+    subgraph GOVERNANCE["Governance Controls"]
+        direction TB
+
+        subgraph POLICIES["Azure Policy Assignments"]
+            ROOT_POLICIES["Root Level Policies<br/>- Allowed Locations<br/>- Audit Diagnostics<br/>- Require Tags"]
+            PLATFORM_POLICIES["Platform Policies<br/>- Deny Public IP<br/>- Require Encryption"]
+            LZ_POLICIES["Landing Zone Policies<br/>- VM SKU Restrictions<br/>- Storage Security"]
+            CORP_POLICIES["Corp-specific<br/>- No Public Endpoints<br/>- Private Link Required"]
+            ONLINE_POLICIES["Online-specific<br/>- WAF Required<br/>- HTTPS Only"]
+        end
+
+        INITIATIVES["Policy Initiatives<br/>- Security Benchmark<br/>- Regulatory Compliance"]
+    end
+
+    subgraph SECURITY["Security Baseline"]
+        direction TB
+
+        DEFENDER["Microsoft Defender<br/>for Cloud<br/>- CSPM<br/>- CWP"]
+        MDR["Defender for:<br/>- Servers<br/>- Storage<br/>- SQL<br/>- Containers"]
+        RBAC["Azure RBAC<br/>- Least Privilege<br/>- Custom Roles"]
+        PIM["Privileged Identity<br/>Management<br/>- JIT Access"]
+    end
+
+    subgraph VENDING["Subscription Vending"]
+        direction TB
+
+        VENDING_PROCESS["Subscription Vending<br/>Automated Process"]
+        BICEP_MODULES["Bicep/Terraform<br/>Modules"]
+        PIPELINE["CI/CD Pipeline<br/>GitHub Actions<br/>Azure DevOps"]
+    end
+
+    %% Hierarchy connections
+    ROOT_MG --> INTERMEDIATE
+    INTERMEDIATE --> PLATFORM_MG
+    INTERMEDIATE --> LZ_MG
+    INTERMEDIATE --> SANDBOX_MG
+    INTERMEDIATE --> DECOMM_MG
+
+    PLATFORM_MG --> IDENTITY_MG
+    PLATFORM_MG --> MANAGEMENT_MG
+    PLATFORM_MG --> CONNECTIVITY_MG
+
+    LZ_MG --> CORP_MG
+    LZ_MG --> ONLINE_MG
+
+    %% Subscription assignments
+    IDENTITY_MG --> IDENTITY_SUB
+    MANAGEMENT_MG --> MGMT_SUB
+    CONNECTIVITY_MG --> CONN_SUB
+
+    CORP_MG --> CORP_SUBS
+    ONLINE_MG --> ONLINE_SUBS
+
+    %% Network connectivity
+    CORP_SPOKE -->|VNet Peering| HUB_VNET
+    ONLINE_SPOKE -->|VNet Peering| HUB_VNET
+
+    %% Policy flow
+    ROOT_MG -.->|Inherits| ROOT_POLICIES
+    PLATFORM_MG -.->|Inherits| PLATFORM_POLICIES
+    LZ_MG -.->|Inherits| LZ_POLICIES
+    CORP_MG -.->|Inherits| CORP_POLICIES
+    ONLINE_MG -.->|Inherits| ONLINE_POLICIES
+
+    %% Security baseline
+    DEFENDER --> PLATFORM_SUBS
+    DEFENDER --> APP_SUBS
+
+    %% Vending
+    VENDING_PROCESS --> BICEP_MODULES
+    BICEP_MODULES --> PIPELINE
+    PIPELINE --> APP_SUBS
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: Platform subscriptions<br/>host shared services managed<br/>by central platform team"]
+    NOTE2["**EXAM TIP**: Application landing zones<br/>are workload-specific with<br/>inherited governance"]
+    NOTE3["**EXAM TIP**: Subscription vending<br/>automates consistent landing<br/>zone provisioning"]
+    NOTE4["**EXAM TIP**: Policy inheritance flows<br/>down the MG hierarchy -<br/>child scopes cannot override"]
+
+    %% Styling
+    classDef rootStyle fill:#1a1a2e,stroke:#16213e,color:#fff,stroke-width:3px
+    classDef platformMGStyle fill:#0f4c75,stroke:#3282b8,color:#fff
+    classDef lzMGStyle fill:#2e7d32,stroke:#4caf50,color:#fff
+    classDef sandboxStyle fill:#f57c00,stroke:#ff9800,color:#fff
+    classDef decommStyle fill:#c62828,stroke:#ef5350,color:#fff
+    classDef identityStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef mgmtStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef connStyle fill:#ff7043,stroke:#e64a19,color:#fff
+    classDef corpStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef onlineStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef policyStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef securityStyle fill:#ef5350,stroke:#c62828,color:#fff
+    classDef vendingStyle fill:#90a4ae,stroke:#546e7a,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class ROOT_MG rootStyle
+    class PLATFORM_MG,IDENTITY_MG,MANAGEMENT_MG,CONNECTIVITY_MG platformMGStyle
+    class LZ_MG,CORP_MG,ONLINE_MG lzMGStyle
+    class SANDBOX_MG sandboxStyle
+    class DECOMM_MG decommStyle
+    class AD_DS,ENTRA_CONNECT,PKI identityStyle
+    class LOG_ANALYTICS,AUTOMATION,MONITOR,SENTINEL_WS,BACKUP_VAULT mgmtStyle
+    class ER_GW,VPN_GW,FIREWALL,BASTION,DNS_RESOLVER,DNS_ZONES,DDOS connStyle
+    class CORP_PROD,CORP_DEV,CORP_SAP,CORP_SPOKE corpStyle
+    class ONLINE_PROD,ONLINE_API,ONLINE_SPOKE onlineStyle
+    class ROOT_POLICIES,PLATFORM_POLICIES,LZ_POLICIES,CORP_POLICIES,ONLINE_POLICIES,INITIATIVES policyStyle
+    class DEFENDER,MDR,RBAC,PIM securityStyle
+    class VENDING_PROCESS,BICEP_MODULES,PIPELINE vendingStyle
+    class NOTE1,NOTE2,NOTE3,NOTE4 noteStyle

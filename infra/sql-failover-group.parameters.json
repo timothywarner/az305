@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "primaryServerName": {
+      "value": "sql-contoso-primary"
+    },
+    "secondaryServerName": {
+      "value": "sql-contoso-secondary"
+    },
+    "secondaryServerResourceGroup": {
+      "value": "rg-contoso-dr-westus2"
+    },
+    "failoverGroupName": {
+      "value": "fog-contoso-prod"
+    },
+    "databaseNames": {
+      "value": [
+        "db-app",
+        "db-analytics"
+      ]
+    },
+    "failoverPolicy": {
+      "value": "Automatic"
+    },
+    "gracePeriodMinutes": {
+      "value": 60
+    },
+    "enableReadOnlyFailover": {
+      "value": true
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "sql-failover",
+        "examObjective": "AZ-305-BusinessContinuity"
+      }
+    }
+  }
+}

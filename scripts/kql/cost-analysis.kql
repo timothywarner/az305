@@ -1,0 +1,349 @@
+// =============================================================================
+// FILE: cost-analysis.kql
+// SYNOPSIS: Cost and usage analysis queries for Azure resources
+// DESCRIPTION:
+//   Collection of KQL queries for cost monitoring and optimization:
+//   - Resource usage patterns for cost attribution
+//   - Idle resource identification
+//   - Capacity utilization analysis
+//   - Resource provisioning trends
+//   - Tag-based cost allocation
+//
+// AZ-305 EXAM OBJECTIVES:
+//   - Design for cost optimization
+//   - Implement resource governance and tagging strategies
+//   - Monitor resource utilization for right-sizing
+//   - Design solutions that minimize unnecessary costs
+//
+// PREREQUISITES:
+//   - Log Analytics Workspace with Activity logs
+//   - Azure Resource Graph access (for some queries)
+//   - VM Insights enabled (for utilization queries)
+//   - Appropriate RBAC permissions
+//
+// TABLES USED:
+//   - AzureActivity: Resource provisioning and operations
+//   - Perf / InsightsMetrics: Resource utilization metrics
+//   - AzureMetrics: Azure service metrics
+//   - Usage: Log Analytics data ingestion tracking
+//
+// NOTES:
+//   These queries focus on usage-based cost analysis available through
+//   Log Analytics. For actual billing data, use Azure Cost Management
+//   APIs or the Cost Analysis blade in the Azure Portal.
+//
+// REFERENCES:
+//   - https://learn.microsoft.com/azure/cost-management-billing/costs/quick-acm-cost-analysis
+//   - https://learn.microsoft.com/azure/azure-monitor/logs/analyze-usage
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// QUERY 1: Log Analytics Data Ingestion by Table
+// -----------------------------------------------------------------------------
+// WHY: Log Analytics charges are based on data ingestion. Understanding
+// which tables consume the most data helps identify optimization
+// opportunities (e.g., adjusting retention, filtering noisy logs).
+// -----------------------------------------------------------------------------
+Usage
+| where TimeGenerated > ago(30d)
+| where IsBillable == true
+| summarize
+    TotalGB = sum(Quantity) / 1000,  // Convert MB to GB
+    AvgDailyGB = sum(Quantity) / 1000 / 30
+    by DataType
+| sort by TotalGB desc
+| take 20
+| project DataType, TotalGB = round(TotalGB, 2), AvgDailyGB = round(AvgDailyGB, 2)
+
+// -----------------------------------------------------------------------------
+// QUERY 2: Log Analytics Ingestion Trend
+// -----------------------------------------------------------------------------
+// WHY: Tracking ingestion trends helps predict costs and identify
+// sudden increases that may indicate misconfiguration or security
+// incidents generating excessive logs.
+// -----------------------------------------------------------------------------
+Usage
+| where TimeGenerated > ago(30d)
+| where IsBillable == true
+| summarize TotalMB = sum(Quantity) by bin(TimeGenerated, 1d)
+| extend TotalGB = round(TotalMB / 1000, 2)
+| project TimeGenerated, TotalGB
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 3: Underutilized VMs - CPU Analysis
+// -----------------------------------------------------------------------------
+// WHY: VMs with consistently low CPU utilization (<20%) may be
+// over-provisioned. Right-sizing to smaller SKUs can significantly
+// reduce compute costs without impacting performance.
+// -----------------------------------------------------------------------------
+let AnalysisPeriod = 7d;
+Perf
+| where TimeGenerated > ago(AnalysisPeriod)
+| where ObjectName == "Processor" and CounterName == "% Processor Time" and InstanceName == "_Total"
+| summarize
+    AvgCPU = avg(CounterValue),
+    MaxCPU = max(CounterValue),
+    P95CPU = percentile(CounterValue, 95)
+    by Computer, _ResourceId
+| where AvgCPU < 20 and MaxCPU < 50  // Consistently underutilized
+| project
+    Computer,
+    AvgCPU = round(AvgCPU, 2),
+    MaxCPU = round(MaxCPU, 2),
+    P95CPU = round(P95CPU, 2),
+    Recommendation = "Consider downsizing VM SKU",
+    _ResourceId
+| sort by AvgCPU asc
+
+// -----------------------------------------------------------------------------
+// QUERY 4: Underutilized VMs - Memory Analysis
+// -----------------------------------------------------------------------------
+// WHY: High available memory indicates over-provisioning. VMs
+// consistently using less than 50% of memory may benefit from
+// smaller SKUs with less RAM at lower cost.
+// -----------------------------------------------------------------------------
+let AnalysisPeriod = 7d;
+InsightsMetrics
+| where TimeGenerated > ago(AnalysisPeriod)
+| where Origin == "vm.azm.ms"
+| where Namespace == "Memory" and Name == "AvailableMB"
+| extend TotalMemoryMB = toint(parse_json(Tags)["vm.azm.ms/totalMemoryMB"])
+| extend UsedMemoryPct = 100.0 * (TotalMemoryMB - Val) / TotalMemoryMB
+| summarize
+    AvgMemoryUsedPct = avg(UsedMemoryPct),
+    MaxMemoryUsedPct = max(UsedMemoryPct),
+    TotalMemoryGB = max(TotalMemoryMB) / 1024
+    by Computer, _ResourceId
+| where AvgMemoryUsedPct < 30 and MaxMemoryUsedPct < 60  // Underutilized
+| project
+    Computer,
+    TotalMemoryGB = round(TotalMemoryGB, 1),
+    AvgMemoryUsedPct = round(AvgMemoryUsedPct, 2),
+    MaxMemoryUsedPct = round(MaxMemoryUsedPct, 2),
+    Recommendation = "Consider VM with less memory",
+    _ResourceId
+| sort by AvgMemoryUsedPct asc
+
+// -----------------------------------------------------------------------------
+// QUERY 5: Resource Provisioning Activity
+// -----------------------------------------------------------------------------
+// WHY: Tracking resource creation helps understand cost growth patterns.
+// Unexpected provisioning spikes may indicate unauthorized usage or
+// runaway automation.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where CategoryValue == "Administrative"
+| where OperationNameValue endswith "/write" or OperationNameValue endswith "create"
+| where ActivityStatusValue == "Succeeded"
+| parse _ResourceId with "/subscriptions/" SubscriptionId "/resourceGroups/" ResourceGroup "/providers/" ResourceProvider "/" ResourceType "/" *
+| summarize
+    ResourcesCreated = count()
+    by bin(TimeGenerated, 1d), ResourceProvider, ResourceType
+| sort by TimeGenerated asc
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 6: Resource Deletion Activity
+// -----------------------------------------------------------------------------
+// WHY: Monitoring deletions helps track cleanup efforts and ensure
+// decommissioned resources don't incur ongoing costs. Also useful
+// for detecting unauthorized deletions.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where CategoryValue == "Administrative"
+| where OperationNameValue endswith "/delete"
+| where ActivityStatusValue == "Succeeded"
+| parse _ResourceId with "/subscriptions/" SubscriptionId "/resourceGroups/" ResourceGroup "/providers/" ResourceProvider "/" ResourceType "/" ResourceName
+| summarize
+    ResourcesDeleted = count()
+    by bin(TimeGenerated, 1d), ResourceProvider
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 7: Storage Account Transaction Analysis
+// -----------------------------------------------------------------------------
+// WHY: Storage accounts charge per transaction in addition to capacity.
+// High transaction volumes on Cool/Archive tiers can result in
+// unexpected costs. Hot tier may be more cost-effective for frequently
+// accessed data.
+// -----------------------------------------------------------------------------
+AzureMetrics
+| where TimeGenerated > ago(7d)
+| where ResourceProvider == "MICROSOFT.STORAGE"
+| where MetricName == "Transactions"
+| parse _ResourceId with * "/storageAccounts/" StorageAccount
+| summarize
+    TotalTransactions = sum(Total)
+    by bin(TimeGenerated, 1h), StorageAccount
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 8: Database DTU/vCore Utilization for Right-Sizing
+// -----------------------------------------------------------------------------
+// WHY: Azure SQL pricing is based on DTU or vCore tier. Databases
+// with consistently low utilization can be moved to lower tiers.
+// Conversely, high utilization may justify upgrading for performance.
+// -----------------------------------------------------------------------------
+AzureMetrics
+| where TimeGenerated > ago(7d)
+| where ResourceProvider == "MICROSOFT.SQL"
+| where MetricName in ("cpu_percent", "dtu_consumption_percent")
+| parse _ResourceId with * "/servers/" ServerName "/databases/" DatabaseName
+| summarize
+    AvgUtilization = avg(Average),
+    MaxUtilization = max(Maximum),
+    P95Utilization = percentile(Average, 95)
+    by ServerName, DatabaseName, MetricName
+| evaluate pivot(MetricName, avg(AvgUtilization), avg(MaxUtilization), avg(P95Utilization))
+| extend SizingRecommendation = case(
+    avg_Average_cpu_percent < 20, "Consider downgrade",
+    avg_Average_cpu_percent > 80, "Consider upgrade",
+    "Appropriately sized"
+)
+| project ServerName, DatabaseName, avg_Average_cpu_percent, avg_Maximum_cpu_percent, SizingRecommendation
+
+// -----------------------------------------------------------------------------
+// QUERY 9: Idle Public IP Addresses Detection
+// -----------------------------------------------------------------------------
+// WHY: Public IP addresses incur charges whether attached to a
+// resource or not. Identifying IPs without associated resources
+// helps eliminate unnecessary costs.
+// -----------------------------------------------------------------------------
+// Note: This query uses AzureActivity to find PIPs that were created
+// but may have had their associated resources deleted.
+AzureActivity
+| where TimeGenerated > ago(90d)
+| where OperationNameValue == "MICROSOFT.NETWORK/PUBLICIPADDRESSES/WRITE"
+| where ActivityStatusValue == "Succeeded"
+| parse _ResourceId with "/subscriptions/" SubscriptionId "/resourceGroups/" ResourceGroup "/providers/Microsoft.Network/publicIPAddresses/" PIPName
+| summarize LastModified = max(TimeGenerated) by SubscriptionId, ResourceGroup, PIPName
+| sort by LastModified desc
+
+// -----------------------------------------------------------------------------
+// QUERY 10: Data Ingestion by Solution/Source
+// -----------------------------------------------------------------------------
+// WHY: Different solutions (VM Insights, Container Insights, etc.)
+// generate varying data volumes. Understanding which solutions
+// contribute most helps prioritize optimization efforts.
+// -----------------------------------------------------------------------------
+Usage
+| where TimeGenerated > ago(30d)
+| where IsBillable == true
+| summarize
+    TotalGB = sum(Quantity) / 1000
+    by Solution
+| sort by TotalGB desc
+| project Solution, TotalGB = round(TotalGB, 2)
+
+// -----------------------------------------------------------------------------
+// QUERY 11: App Service Plan Utilization
+// -----------------------------------------------------------------------------
+// WHY: App Service Plans charge based on tier regardless of actual
+// usage. Understanding CPU and memory patterns helps determine if
+// scaling down or consolidating apps is feasible.
+// -----------------------------------------------------------------------------
+AzureMetrics
+| where TimeGenerated > ago(7d)
+| where ResourceProvider == "MICROSOFT.WEB"
+| where MetricName in ("CpuPercentage", "MemoryPercentage")
+| parse _ResourceId with * "/serverfarms/" AppServicePlan
+| summarize
+    AvgValue = avg(Average),
+    MaxValue = max(Maximum)
+    by AppServicePlan, MetricName
+| evaluate pivot(MetricName, avg(AvgValue), max(MaxValue))
+| project
+    AppServicePlan,
+    AvgCPU = round(avg_Average_CpuPercentage, 2),
+    MaxCPU = round(max_Maximum_CpuPercentage, 2),
+    AvgMemory = round(avg_Average_MemoryPercentage, 2),
+    MaxMemory = round(max_Maximum_MemoryPercentage, 2)
+
+// -----------------------------------------------------------------------------
+// QUERY 12: Resource Group Activity Summary
+// -----------------------------------------------------------------------------
+// WHY: Summarizing activity by resource group helps identify which
+// teams or projects are consuming the most resources and generating
+// the most operational activity.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded"
+| parse _ResourceId with "/subscriptions/" SubscriptionId "/resourceGroups/" ResourceGroup "/" *
+| summarize
+    TotalOperations = count(),
+    WriteOperations = countif(OperationNameValue contains "/write"),
+    DeleteOperations = countif(OperationNameValue contains "/delete"),
+    UniqueCallers = dcount(Caller)
+    by ResourceGroup
+| sort by TotalOperations desc
+| take 20
+
+// -----------------------------------------------------------------------------
+// QUERY 13: Noisy Log Sources Identification
+// -----------------------------------------------------------------------------
+// WHY: Some resources generate excessive logs that inflate ingestion
+// costs without providing proportional value. Identifying these helps
+// target filtering or sampling configurations.
+// -----------------------------------------------------------------------------
+Usage
+| where TimeGenerated > ago(7d)
+| where IsBillable == true
+| summarize
+    TotalMB = sum(Quantity),
+    AvgDailyMB = sum(Quantity) / 7
+    by ResourceUri, DataType
+| where TotalMB > 1000  // More than 1GB in the period
+| project
+    ResourceUri,
+    DataType,
+    TotalGB = round(TotalMB / 1000, 2),
+    AvgDailyMB = round(AvgDailyMB, 0)
+| sort by TotalGB desc
+| take 20
+
+// -----------------------------------------------------------------------------
+// QUERY 14: Weekend vs Weekday Resource Activity
+// -----------------------------------------------------------------------------
+// WHY: Comparing weekend and weekday activity helps identify
+// opportunities for auto-shutdown policies or spot instances for
+// development/test workloads.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where CategoryValue == "Administrative"
+| extend DayOfWeek = dayofweek(TimeGenerated)
+| extend IsWeekend = iff(DayOfWeek == 0d or DayOfWeek == 6d, "Weekend", "Weekday")
+| summarize Operations = count() by bin(TimeGenerated, 1d), IsWeekend
+| summarize AvgDailyOps = avg(Operations) by IsWeekend
+
+// -----------------------------------------------------------------------------
+// QUERY 15: Cost Attribution Summary by Tags
+// -----------------------------------------------------------------------------
+// WHY: Tags enable cost allocation to teams, projects, or environments.
+// This query helps understand which tagged resources are most active,
+// correlating to potential cost.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded"
+| extend Tags = todynamic(Properties).tags
+| mv-expand Tags
+| extend TagKey = tostring(bag_keys(Tags)[0])
+| extend TagValue = tostring(Tags[TagKey])
+| where isnotempty(TagKey)
+| summarize
+    Operations = count(),
+    UniqueResources = dcount(_ResourceId)
+    by TagKey, TagValue
+| sort by Operations desc
+| take 50
+
+// =============================================================================
+// END OF FILE
+// =============================================================================

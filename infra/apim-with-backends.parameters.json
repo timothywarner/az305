@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "apimName": {
+      "value": "contoso-apis"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "publisherEmail": {
+      "value": "api-team@contoso.com"
+    },
+    "publisherName": {
+      "value": "Contoso Corporation"
+    },
+    "sku": {
+      "value": "Developer"
+    },
+    "skuCount": {
+      "value": 1
+    },
+    "virtualNetworkType": {
+      "value": "None"
+    },
+    "vnetId": {
+      "value": ""
+    },
+    "apimSubnetName": {
+      "value": "ApiManagement"
+    },
+    "enableAvailabilityZones": {
+      "value": false
+    },
+    "applicationInsightsId": {
+      "value": ""
+    },
+    "enableManagedIdentity": {
+      "value": true
+    },
+    "deploySampleApi": {
+      "value": false
+    },
+    "sampleApiBackendUrl": {
+      "value": "https://httpbin.org"
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "api-management",
+        "examObjective": "AZ-305-Application"
+      }
+    }
+  }
+}

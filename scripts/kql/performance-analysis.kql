@@ -1,0 +1,322 @@
+// =============================================================================
+// FILE: performance-analysis.kql
+// SYNOPSIS: Performance monitoring queries for VMs and Azure SQL
+// DESCRIPTION:
+//   Collection of KQL queries for performance monitoring and analysis:
+//   - VM CPU, memory, and disk utilization
+//   - Azure SQL Database performance metrics
+//   - Trend analysis and capacity planning
+//   - Performance anomaly detection
+//   - Resource bottleneck identification
+//
+// AZ-305 EXAM OBJECTIVES:
+//   - Design monitoring solutions for infrastructure
+//   - Implement performance monitoring for compute resources
+//   - Configure alerts for performance thresholds
+//   - Design for scalability and capacity planning
+//
+// PREREQUISITES:
+//   - Log Analytics Workspace with VM Insights enabled
+//   - Azure Monitor Agent or Log Analytics Agent installed on VMs
+//   - Azure SQL Diagnostics configured
+//   - Performance counters collection enabled
+//
+// TABLES USED:
+//   - Perf: Performance counter data from VMs
+//   - InsightsMetrics: VM Insights metrics (newer format)
+//   - AzureMetrics: Azure resource metrics
+//   - AzureDiagnostics: Azure SQL diagnostics
+//
+// REFERENCES:
+//   - https://learn.microsoft.com/azure/azure-monitor/vm/vminsights-log-query
+//   - https://learn.microsoft.com/azure/azure-sql/database/monitoring-sql-database-azure-monitor
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// QUERY 1: VM CPU Utilization Over Time
+// -----------------------------------------------------------------------------
+// WHY: CPU utilization is a primary indicator of compute capacity.
+// Sustained high CPU (>80%) indicates need for scaling or optimization.
+// Time binning at 15-minute intervals provides useful trend visibility.
+// -----------------------------------------------------------------------------
+Perf
+| where TimeGenerated > ago(24h)
+| where ObjectName == "Processor"
+| where CounterName == "% Processor Time"
+| where InstanceName == "_Total"
+| summarize AvgCPU = avg(CounterValue) by bin(TimeGenerated, 15m), Computer, _ResourceId
+| project TimeGenerated, Computer, AvgCPU, _ResourceId
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 2: VM Available Memory Analysis
+// -----------------------------------------------------------------------------
+// WHY: Memory pressure causes application slowdowns and failures.
+// Tracking available memory helps identify VMs needing vertical scaling
+// or memory optimization. Works across both Windows and Linux VMs.
+// -----------------------------------------------------------------------------
+Perf
+| where TimeGenerated > ago(24h)
+| where ObjectName == "Memory" and
+    (CounterName == "Available MBytes Memory" or  // Linux counter name
+     CounterName == "Available MBytes")           // Windows counter name
+| summarize AvgAvailableMemoryMB = avg(CounterValue) by bin(TimeGenerated, 15m), Computer, _ResourceId
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 3: VM Memory Utilization Percentage
+// -----------------------------------------------------------------------------
+// WHY: Percentage-based metrics enable comparison across VMs with
+// different memory configurations. VMs consistently above 85%
+// utilization are candidates for scaling.
+// -----------------------------------------------------------------------------
+// For VMs with VM Insights enabled (InsightsMetrics table)
+InsightsMetrics
+| where TimeGenerated > ago(24h)
+| where Origin == "vm.azm.ms"
+| where Namespace == "Memory" and Name == "AvailableMB"
+| extend TotalMemoryMB = toint(parse_json(Tags)["vm.azm.ms/totalMemoryMB"])
+| extend MemoryUsedPct = round(100.0 * (TotalMemoryMB - Val) / TotalMemoryMB, 2)
+| summarize AvgMemoryUsedPct = avg(MemoryUsedPct) by bin(TimeGenerated, 15m), Computer, _ResourceId
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 4: Disk IOPS Analysis
+// -----------------------------------------------------------------------------
+// WHY: Disk IOPS limits can bottleneck application performance,
+// especially for databases and I/O-intensive workloads. Identifying
+// disks approaching their IOPS limits enables proactive scaling.
+// -----------------------------------------------------------------------------
+InsightsMetrics
+| where TimeGenerated > ago(24h)
+| where Origin == "vm.azm.ms"
+| where Namespace == "LogicalDisk" and Name == "TransfersPerSecond"
+| extend Disk = tostring(todynamic(Tags)["vm.azm.ms/mountId"])
+| summarize AvgIOPS = avg(Val) by bin(TimeGenerated, 15m), Computer, Disk, _ResourceId
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 5: Disk Throughput (Bytes/Second)
+// -----------------------------------------------------------------------------
+// WHY: Disk throughput limits affect data transfer operations like
+// backups, bulk data loads, and large file operations. Premium SSD
+// disks have higher throughput limits than Standard disks.
+// -----------------------------------------------------------------------------
+InsightsMetrics
+| where TimeGenerated > ago(24h)
+| where Origin == "vm.azm.ms"
+| where Namespace == "LogicalDisk" and Name == "BytesPerSecond"
+| extend Disk = tostring(todynamic(Tags)["vm.azm.ms/mountId"])
+| summarize AvgBytesPerSec = avg(Val) by bin(TimeGenerated, 15m), Computer, Disk, _ResourceId
+| extend AvgMBPerSec = round(AvgBytesPerSec / 1048576, 2)  // Convert to MB/s
+| project TimeGenerated, Computer, Disk, AvgMBPerSec
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 6: Disk Free Space Monitoring
+// -----------------------------------------------------------------------------
+// WHY: Running out of disk space causes application failures and
+// data corruption. Monitoring free space percentage enables proactive
+// disk expansion before issues occur.
+// -----------------------------------------------------------------------------
+Perf
+| where TimeGenerated > ago(1h)
+| where ObjectName == "LogicalDisk" and CounterName == "% Free Space"
+| where InstanceName !in ("_Total", "HarddiskVolume1")  // Exclude system volumes
+| summarize
+    AvgFreeSpacePct = avg(CounterValue),
+    MinFreeSpacePct = min(CounterValue)
+    by Computer, InstanceName, _ResourceId
+| where MinFreeSpacePct < 20  // Alert threshold
+| project Computer, Drive = InstanceName, AvgFreeSpacePct, MinFreeSpacePct, _ResourceId
+| sort by MinFreeSpacePct asc
+
+// -----------------------------------------------------------------------------
+// QUERY 7: Azure SQL CPU Utilization
+// -----------------------------------------------------------------------------
+// WHY: Azure SQL Database has DTU or vCore limits that cap CPU usage.
+// Monitoring CPU helps determine if you need to scale up the database
+// tier or optimize queries consuming excessive resources.
+// -----------------------------------------------------------------------------
+AzureMetrics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.SQL"
+| where MetricName == "cpu_percent"
+| parse _ResourceId with * "/microsoft.sql/servers/" ServerName "/databases/" DatabaseName
+| summarize
+    AvgCPU = avg(Average),
+    MaxCPU = max(Maximum),
+    MinCPU = min(Minimum)
+    by bin(TimeGenerated, 15m), ServerName, DatabaseName
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 8: Azure SQL DTU Consumption Analysis
+// -----------------------------------------------------------------------------
+// WHY: DTU (Database Transaction Units) represent combined CPU, memory,
+// and I/O capacity. Consistently high DTU usage indicates need for
+// scaling or query optimization.
+// -----------------------------------------------------------------------------
+AzureMetrics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.SQL"
+| where MetricName == "dtu_consumption_percent"
+| parse _ResourceId with * "/microsoft.sql/servers/" ServerName "/databases/" DatabaseName
+| summarize
+    AvgDTU = avg(Average),
+    MaxDTU = max(Maximum)
+    by bin(TimeGenerated, 15m), ServerName, DatabaseName
+| project TimeGenerated, ServerName, DatabaseName, AvgDTU, MaxDTU
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 9: Azure SQL Storage Analysis
+// -----------------------------------------------------------------------------
+// WHY: Azure SQL has storage limits based on tier. Approaching storage
+// limits can cause database operations to fail. Monitoring storage
+// usage enables proactive capacity management.
+// -----------------------------------------------------------------------------
+AzureMetrics
+| where TimeGenerated > ago(7d)
+| where ResourceProvider == "MICROSOFT.SQL"
+| where MetricName == "storage_percent"
+| parse _ResourceId with * "/microsoft.sql/servers/" ServerName "/databases/" DatabaseName
+| summarize
+    AvgStoragePct = avg(Average),
+    MaxStoragePct = max(Maximum)
+    by bin(TimeGenerated, 1h), ServerName, DatabaseName
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 10: Top Resource Consumers - VM Summary
+// -----------------------------------------------------------------------------
+// WHY: Identifies VMs with highest resource utilization for capacity
+// planning and cost optimization. VMs with consistently low utilization
+// may be candidates for right-sizing.
+// -----------------------------------------------------------------------------
+Perf
+| where TimeGenerated > ago(24h)
+| where ObjectName == "Processor" and CounterName == "% Processor Time" and InstanceName == "_Total"
+| summarize AvgCPU = avg(CounterValue) by Computer, _ResourceId
+| join kind=inner (
+    Perf
+    | where TimeGenerated > ago(24h)
+    | where ObjectName == "Memory" and
+        (CounterName == "Available MBytes Memory" or CounterName == "Available MBytes")
+    | summarize AvgAvailableMemory = avg(CounterValue) by Computer
+) on Computer
+| project Computer, AvgCPU = round(AvgCPU, 2), AvgAvailableMemoryMB = round(AvgAvailableMemory, 0), _ResourceId
+| sort by AvgCPU desc
+| take 20
+
+// -----------------------------------------------------------------------------
+// QUERY 11: Performance Anomaly Detection
+// -----------------------------------------------------------------------------
+// WHY: Time series anomaly detection automatically identifies unusual
+// performance patterns without manual threshold configuration.
+// Useful for detecting issues that don't breach static thresholds.
+// -----------------------------------------------------------------------------
+let LookbackDays = 7d;
+Perf
+| where TimeGenerated > ago(LookbackDays)
+| where ObjectName == "Processor" and CounterName == "% Processor Time" and InstanceName == "_Total"
+| where Computer == "YourVMName"  // Replace with target VM
+| make-series CPUTrend = avg(CounterValue) default = 0
+    on TimeGenerated
+    in range(ago(LookbackDays), now(), 1h)
+| extend (anomalies, score, baseline) = series_decompose_anomalies(CPUTrend)
+| project TimeGenerated, CPUTrend, anomalies, score, baseline
+
+// -----------------------------------------------------------------------------
+// QUERY 12: Network Throughput Analysis
+// -----------------------------------------------------------------------------
+// WHY: Network bandwidth limits can cause application latency and
+// timeouts. Monitoring network throughput helps identify bandwidth
+// constraints and optimize network configuration.
+// -----------------------------------------------------------------------------
+Perf
+| where TimeGenerated > ago(24h)
+| where ObjectName == "Network Adapter" or ObjectName == "Network"
+| where CounterName == "Bytes Received/sec" or CounterName == "Bytes Sent/sec"
+| summarize
+    TotalBytesReceived = sum(iff(CounterName == "Bytes Received/sec", CounterValue, 0.0)),
+    TotalBytesSent = sum(iff(CounterName == "Bytes Sent/sec", CounterValue, 0.0))
+    by bin(TimeGenerated, 15m), Computer
+| extend
+    ReceivedMbps = round(TotalBytesReceived * 8 / 1000000, 2),
+    SentMbps = round(TotalBytesSent * 8 / 1000000, 2)
+| project TimeGenerated, Computer, ReceivedMbps, SentMbps
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 13: Azure SQL Deadlock Detection
+// -----------------------------------------------------------------------------
+// WHY: Deadlocks cause transaction failures and application errors.
+// Identifying deadlock patterns helps developers optimize queries
+// and transaction isolation levels.
+// -----------------------------------------------------------------------------
+AzureDiagnostics
+| where TimeGenerated > ago(7d)
+| where ResourceProvider == "MICROSOFT.SQL"
+| where Category == "Deadlocks"
+| parse _ResourceId with * "/microsoft.sql/servers/" ServerName "/databases/" DatabaseName
+| project
+    TimeGenerated,
+    ServerName,
+    DatabaseName,
+    deadlock_xml = tostring(deadlock_xml_s)
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 14: Long Running Queries - Azure SQL
+// -----------------------------------------------------------------------------
+// WHY: Long-running queries consume resources and can cause blocking.
+// Identifying these queries enables targeted optimization efforts.
+// -----------------------------------------------------------------------------
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.SQL"
+| where Category == "QueryStoreRuntimeStatistics"
+| where duration_s > 30000  // Queries longer than 30 seconds (in milliseconds)
+| parse _ResourceId with * "/microsoft.sql/servers/" ServerName "/databases/" DatabaseName
+| project
+    TimeGenerated,
+    ServerName,
+    DatabaseName,
+    DurationSeconds = duration_s / 1000,
+    query_hash_s,
+    count_executions_d
+| sort by DurationSeconds desc
+| take 20
+
+// -----------------------------------------------------------------------------
+// QUERY 15: VM Performance Dashboard Query
+// -----------------------------------------------------------------------------
+// WHY: Provides a consolidated performance overview suitable for
+// dashboards. Combines CPU, memory, and disk metrics for quick
+// health assessment across all VMs.
+// -----------------------------------------------------------------------------
+let TimeRange = 1h;
+Perf
+| where TimeGenerated > ago(TimeRange)
+| where (ObjectName == "Processor" and CounterName == "% Processor Time" and InstanceName == "_Total")
+    or (ObjectName == "Memory" and (CounterName == "Available MBytes Memory" or CounterName == "Available MBytes"))
+    or (ObjectName == "LogicalDisk" and CounterName == "% Free Space" and InstanceName == "C:")
+| summarize Value = avg(CounterValue) by Computer, CounterName
+| evaluate pivot(CounterName, avg(Value))
+| project
+    Computer,
+    CPU_Pct = round(['% Processor Time'], 2),
+    AvailableMemoryMB = round(coalesce(['Available MBytes Memory'], ['Available MBytes']), 0),
+    DiskFreeSpacePct = round(['% Free Space'], 2)
+| extend
+    HealthStatus = case(
+        CPU_Pct > 90 or DiskFreeSpacePct < 10, "Critical",
+        CPU_Pct > 80 or DiskFreeSpacePct < 20, "Warning",
+        "Healthy"
+    )
+| sort by HealthStatus asc, CPU_Pct desc
+
+// =============================================================================
+// END OF FILE
+// =============================================================================

@@ -1,0 +1,158 @@
+%% AZ-305 Domain 3: High Availability Patterns
+%% Reference: Azure reliability guidance, Availability Zones
+%% Exam Focus: Availability sets vs zones, load balancing, Traffic Manager
+
+flowchart TB
+    subgraph REGIONAL_HA["Regional High Availability"]
+        direction TB
+
+        subgraph AZ_ZONES["Availability Zones Pattern"]
+            AZ1["Zone 1<br/>Datacenter A"]
+            AZ2["Zone 2<br/>Datacenter B"]
+            AZ3["Zone 3<br/>Datacenter C"]
+
+            VM_Z1["VM Instance<br/>Zone 1"]
+            VM_Z2["VM Instance<br/>Zone 2"]
+            VM_Z3["VM Instance<br/>Zone 3"]
+
+            ZONE_LB["Zone-Redundant<br/>Load Balancer<br/>Standard SKU"]
+        end
+
+        subgraph AV_SETS["Availability Sets Pattern"]
+            AS_CONFIG["Availability Set<br/>Fault Domains: 3<br/>Update Domains: 5"]
+
+            FD1["Fault Domain 1<br/>Rack 1"]
+            FD2["Fault Domain 2<br/>Rack 2"]
+            FD3["Fault Domain 3<br/>Rack 3"]
+
+            VM_AS1["VM Instance"]
+            VM_AS2["VM Instance"]
+            VM_AS3["VM Instance"]
+        end
+
+        VMSS["Virtual Machine Scale Sets<br/>Zone-Spanning or Zonal<br/>Auto-scaling enabled"]
+    end
+
+    subgraph LOAD_BALANCING["Load Balancing Options"]
+        direction TB
+
+        subgraph L4_LB["Layer 4 Load Balancing"]
+            ALB_PUBLIC["Azure Load Balancer<br/>Public (External)<br/>Internet-facing"]
+            ALB_INTERNAL["Azure Load Balancer<br/>Internal (Private)<br/>Backend services"]
+            GLB["Gateway Load Balancer<br/>NVA chaining<br/>Transparent insertion"]
+        end
+
+        subgraph L7_LB["Layer 7 Load Balancing"]
+            APP_GW["Application Gateway<br/>WAF, SSL termination<br/>Path-based routing"]
+            APP_GW_V2["App Gateway v2<br/>Autoscaling<br/>Zone-redundant"]
+        end
+
+        LB_HEALTH["Health Probes<br/>HTTP/HTTPS/TCP<br/>Unhealthy removal"]
+    end
+
+    subgraph GLOBAL_HA["Global High Availability"]
+        direction TB
+
+        subgraph TRAFFIC_ROUTING["Traffic Manager"]
+            TM_PROFILE["Traffic Manager Profile<br/>DNS-based routing"]
+
+            TM_PRIORITY["Priority Routing<br/>Active-Passive<br/>Failover"]
+            TM_WEIGHTED["Weighted Routing<br/>Traffic distribution<br/>Blue-green deploy"]
+            TM_PERF["Performance Routing<br/>Lowest latency<br/>Nearest region"]
+            TM_GEO["Geographic Routing<br/>Compliance<br/>Data residency"]
+            TM_MULTI["MultiValue Routing<br/>Return all healthy<br/>Client-side choice"]
+            TM_SUBNET["Subnet Routing<br/>Source IP based<br/>Enterprise scenarios"]
+        end
+
+        subgraph FRONT_DOOR["Azure Front Door"]
+            AFD["Front Door Premium<br/>Global load balancing<br/>CDN + WAF"]
+            AFD_ROUTING["Routing Methods<br/>Latency, Priority<br/>Weighted, Session"]
+            AFD_HEALTH["Health Probes<br/>Fast failover<br/>~30 seconds"]
+            PRIVATE_LINK["Private Link Origins<br/>Internal backends<br/>Zero public exposure"]
+        end
+    end
+
+    subgraph APP_PATTERNS["Application HA Patterns"]
+        direction TB
+
+        ACTIVE_ACTIVE["Active-Active<br/>Both regions serve traffic<br/>Lowest RTO"]
+        ACTIVE_PASSIVE["Active-Passive<br/>Hot/Warm/Cold standby<br/>Cost vs RTO tradeoff"]
+
+        subgraph RESILIENCE["Resilience Patterns"]
+            RETRY["Retry Pattern<br/>Transient faults<br/>Exponential backoff"]
+            CIRCUIT["Circuit Breaker<br/>Fail fast<br/>Prevent cascade"]
+            BULKHEAD["Bulkhead Pattern<br/>Isolate failures<br/>Limit blast radius"]
+            QUEUE["Queue-Based Load<br/>Leveling Pattern<br/>Decouple producers"]
+        end
+    end
+
+    subgraph SLA_CALC["SLA Calculation"]
+        direction LR
+
+        SINGLE_VM["Single VM<br/>Premium SSD: 99.9%"]
+        AV_SET_SLA["Availability Set<br/>99.95% SLA"]
+        AZ_SLA["Availability Zones<br/>99.99% SLA"]
+        MULTI_REGION["Multi-Region<br/>99.999% composite"]
+
+        COMPOSITE["Composite SLA<br/>= SLA1 x SLA2 x SLA3"]
+    end
+
+    %% Zone connections
+    AZ1 --> VM_Z1
+    AZ2 --> VM_Z2
+    AZ3 --> VM_Z3
+    VM_Z1 --> ZONE_LB
+    VM_Z2 --> ZONE_LB
+    VM_Z3 --> ZONE_LB
+
+    %% Availability Set connections
+    FD1 --> VM_AS1
+    FD2 --> VM_AS2
+    FD3 --> VM_AS3
+    AS_CONFIG --> FD1
+    AS_CONFIG --> FD2
+    AS_CONFIG --> FD3
+
+    %% Load balancing flow
+    ZONE_LB --> ALB_PUBLIC
+    ALB_PUBLIC --> APP_GW
+    ALB_INTERNAL --> APP_GW
+
+    %% Global routing
+    TM_PROFILE --> TM_PRIORITY
+    TM_PROFILE --> TM_WEIGHTED
+    TM_PROFILE --> TM_PERF
+    TM_PROFILE --> TM_GEO
+
+    AFD --> AFD_ROUTING
+    AFD --> AFD_HEALTH
+    AFD --> PRIVATE_LINK
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: Availability Zones<br/>provide 99.99% SLA<br/>vs 99.95% for Av Sets"]
+    NOTE2["**EXAM TIP**: Standard LB required<br/>for Availability Zones<br/>Basic LB is zonal only"]
+    NOTE3["**EXAM TIP**: Traffic Manager is<br/>DNS-based - no inline<br/>Front Door for L7 global"]
+    NOTE4["**EXAM TIP**: Composite SLA<br/>multiply individual SLAs<br/>Add redundancy to improve"]
+
+    %% Styling
+    classDef zoneStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef avsetStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef vmStyle fill:#e3f2fd,stroke:#1976d2,color:#000
+    classDef lbStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef l7Style fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef globalStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef routingStyle fill:#4fc3f7,stroke:#0288d1,color:#000
+    classDef patternStyle fill:#f06292,stroke:#c2185b,color:#fff
+    classDef slaStyle fill:#a5d6a7,stroke:#388e3c,color:#000
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class AZ1,AZ2,AZ3 zoneStyle
+    class AS_CONFIG,FD1,FD2,FD3 avsetStyle
+    class VM_Z1,VM_Z2,VM_Z3,VM_AS1,VM_AS2,VM_AS3,VMSS vmStyle
+    class ZONE_LB,ALB_PUBLIC,ALB_INTERNAL,GLB,LB_HEALTH lbStyle
+    class APP_GW,APP_GW_V2 l7Style
+    class TM_PROFILE,AFD globalStyle
+    class TM_PRIORITY,TM_WEIGHTED,TM_PERF,TM_GEO,TM_MULTI,TM_SUBNET,AFD_ROUTING,AFD_HEALTH,PRIVATE_LINK routingStyle
+    class ACTIVE_ACTIVE,ACTIVE_PASSIVE,RETRY,CIRCUIT,BULKHEAD,QUEUE patternStyle
+    class SINGLE_VM,AV_SET_SLA,AZ_SLA,MULTI_REGION,COMPOSITE slaStyle
+    class NOTE1,NOTE2,NOTE3,NOTE4 noteStyle
