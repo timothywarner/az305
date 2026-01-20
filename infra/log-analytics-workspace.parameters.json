@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceName": {
+      "value": "az305-central-logs"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "sku": {
+      "value": "PerGB2018"
+    },
+    "retentionInDays": {
+      "value": 90
+    },
+    "dailyQuotaGb": {
+      "value": 10
+    },
+    "publicNetworkAccessForIngestion": {
+      "value": "Enabled"
+    },
+    "publicNetworkAccessForQuery": {
+      "value": "Enabled"
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "monitoring",
+        "examObjective": "AZ-305-LoggingMonitoring",
+        "costCenter": "IT-Operations"
+      }
+    }
+  }
+}

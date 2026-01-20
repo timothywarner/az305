@@ -7,6 +7,7 @@ Welcome to the ultimate resource hub for preparing for the **AZ-305 Microsoft Az
 ---
 
 ## 📬 **Contact Information**
+
 - **[Email](mailto:tim@techtrainertim.com)**
 - **[LinkedIn](https://www.linkedin.com/in/timothywarner316/)**
 - **[YouTube Channel](https://www.youtube.com/channel/UCim7PFtynyPuzMHtbNyYOXA)**
@@ -20,6 +21,7 @@ Welcome to the ultimate resource hub for preparing for the **AZ-305 Microsoft Az
 ---
 
 ## 🚀 **The Good Stuff: Must-Have AZ-305 Resources**
+
 - [AZ-305 Exam Page](https://docs.microsoft.com/en-us/learn/certifications/exams/az-305)
 - [AZ-305 Skills Measured](https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-305)
 - [Exam Registration (Microsoft/Pearson VUE)](https://learn.microsoft.com/en-us/credentials/certifications/schedule-through-pearson-vue?examUid=exam.AZ-305&examUrl=https%3A%2F%2Flearn.microsoft.com%2Fcredentials%2Fcertifications)
@@ -31,7 +33,9 @@ Welcome to the ultimate resource hub for preparing for the **AZ-305 Microsoft Az
 ---
 
 ## 📘 **Conceptual Knowledge**
+
 These resources build your understanding of Azure fundamentals and exam concepts:
+
 - [Azure Documentation](https://docs.microsoft.com/en-us/azure/)
 - [Azure Architecture Center](https://learn.microsoft.com/en-us/azure/architecture/)
 - [Azure Quickstart Templates](https://azure.microsoft.com/en-us/resources/templates/)
@@ -44,8 +48,10 @@ These resources build your understanding of Azure fundamentals and exam concepts
 ---
 
 ## 🛠 **Your Toolkit**
+
 Essential tools to follow along and practice efficiently:
-- **[Visual Studio Code](https://code.visualstudio.com/)**  
+
+- **[Visual Studio Code](https://code.visualstudio.com/)**
   Recommended extensions:
   - [GitHub Pull Requests and Issues](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github)
   - [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot)
@@ -72,7 +78,9 @@ Essential tools to follow along and practice efficiently:
 ---
 
 ## 🛡 **Practical Application**
+
 Learn through hands-on labs and live environments:
+
 - [Azure Free Account](https://azure.microsoft.com/en-us/free/trial/)
 - [Microsoft Learn: Solutions Architect Path](https://docs.microsoft.com/en-us/learn/browse/?roles=solution-architect)
 - [Azure Citadel](https://azurecitadel.com/)
@@ -83,6 +91,7 @@ Learn through hands-on labs and live environments:
 ---
 
 ## 📑 **Practice Exams**
+
 - [Microsoft Free Practice Assessments](https://learn.microsoft.com/en-us/certifications/practice-assessments-for-microsoft-certifications)
 - [MeasureUp Practice Exams](https://www.measureup.com/az-305-microsoft-azure-solutions-architect-expert-practice-test.html)
 - [Whizlabs AZ-305 Practice Exams](https://www.whizlabs.com/designing-microsoft-azure-infrastructure-solutions-az-305/)
@@ -91,6 +100,7 @@ Learn through hands-on labs and live environments:
 ---
 
 ## 💸 **Exam Discounts and Registration Info**
+
 - [Microsoft Certification Special Offers](https://learn.microsoft.com/en-us/certifications/deals)
 - [AZ-305 Exam Registration](https://learn.microsoft.com/en-us/credentials/certifications/exams/az-305)
 - [About Online Exams](https://learn.microsoft.com/en-us/credentials/certifications/online-exams)
@@ -100,6 +110,7 @@ Learn through hands-on labs and live environments:
 ---
 
 ## 🎥 **Tim's Helper Videos**
+
 - [Exam Registration Walkthrough](https://www.youtube.com/watch?v=FOFWbSYbbVI)
 - [Online Testing Tips](https://www.youtube.com/watch?v=myf6r5nulj0&feature=youtu.be)
 
@@ -134,6 +145,7 @@ python download_diagrams.py
 ```
 
 The script will:
+
 1. Create an `images` directory if it doesn't exist
 2. Download architecture diagrams from the specified Microsoft Learn pages
 3. Save the images with descriptive filenames based on the page name and image index

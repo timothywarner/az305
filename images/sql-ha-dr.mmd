@@ -1,0 +1,118 @@
+%% AZ-305 Domain 2/3: Azure SQL HA/DR with Auto-Failover Groups
+%% Reference: Azure SQL Business Continuity, Failover Groups
+%% Exam Focus: HA options, RTO/RPO, failover groups, geo-replication
+
+flowchart TB
+    subgraph PRIMARY_REGION["Primary Region (East US)"]
+        direction TB
+
+        subgraph PRIMARY_HA["High Availability (Within Region)"]
+            PRIMARY_SERVER["Primary SQL Server<br/>Logical Server"]
+
+            subgraph AZ_REDUNDANT["Zone Redundant (Premium/BC)"]
+                PRIMARY_DB["Primary Database<br/>Compute + Storage"]
+                SECONDARY_REPLICA1["Secondary Replica<br/>Zone 2"]
+                SECONDARY_REPLICA2["Secondary Replica<br/>Zone 3"]
+            end
+
+            LOCAL_REDUNDANT["Locally Redundant<br/>Standard/GP Tier<br/>3 replicas same datacenter"]
+        end
+
+        PRIMARY_APP["Application Tier<br/>Connection String:<br/>primary-server.database.windows.net"]
+
+        PITR["Point-in-Time Restore<br/>RPO: ~5 min<br/>Retention: 7-35 days"]
+        LTR["Long-term Retention<br/>Weekly/Monthly/Yearly<br/>Up to 10 years"]
+    end
+
+    subgraph SECONDARY_REGION["Secondary Region (West US)"]
+        direction TB
+
+        subgraph SECONDARY_HA["Geo-Secondary"]
+            SECONDARY_SERVER["Secondary SQL Server<br/>Logical Server"]
+
+            subgraph GEO_REPLICA["Geo-Replicated Database"]
+                SECONDARY_DB["Secondary Database<br/>Read-Only Replica"]
+            end
+        end
+
+        SECONDARY_APP["Application Tier<br/>(Standby or Read-Scale)"]
+
+        GEO_RESTORE["Geo-Restore<br/>From GRS Backups<br/>RPO: ~1 hour"]
+    end
+
+    subgraph FAILOVER_GROUP["Auto-Failover Group"]
+        direction LR
+
+        FOG_CONFIG["Failover Group Configuration<br/>Name: myapp-fog"]
+
+        RW_LISTENER["Read-Write Listener<br/>myapp-fog.database.windows.net<br/>Points to Primary"]
+        RO_LISTENER["Read-Only Listener<br/>myapp-fog.secondary.database.windows.net<br/>Points to Secondary"]
+
+        FAILOVER_POLICY["Failover Policy<br/>- Automatic (Grace Period)<br/>- Manual (Customer-managed)<br/>- Microsoft-managed"]
+    end
+
+    subgraph REPLICATION["Replication Mechanisms"]
+        SYNC_COMMIT["Synchronous Commit<br/>Within Availability Zones<br/>Zero Data Loss"]
+        ASYNC_COMMIT["Asynchronous Commit<br/>Geo-Replication<br/>RPO: ~5 seconds"]
+    end
+
+    %% HA Connections within primary
+    PRIMARY_DB <-->|Sync| SECONDARY_REPLICA1
+    PRIMARY_DB <-->|Sync| SECONDARY_REPLICA2
+
+    %% Geo-replication
+    PRIMARY_SERVER -->|Async Geo-Replication| SECONDARY_SERVER
+    PRIMARY_DB -->|Continuous Replication| SECONDARY_DB
+
+    %% Failover group connections
+    PRIMARY_SERVER --> FOG_CONFIG
+    SECONDARY_SERVER --> FOG_CONFIG
+    FOG_CONFIG --> RW_LISTENER
+    FOG_CONFIG --> RO_LISTENER
+
+    %% Application connections
+    PRIMARY_APP -->|Read-Write| RW_LISTENER
+    SECONDARY_APP -->|Read-Only| RO_LISTENER
+
+    %% Backup connections
+    PRIMARY_DB --> PITR
+    PRIMARY_DB --> LTR
+    SECONDARY_DB -.-> GEO_RESTORE
+
+    %% Exam decision matrix
+    subgraph DECISION["HA/DR Decision Matrix"]
+        direction LR
+
+        OPTION1["**Zone Redundant**<br/>RTO: 0<br/>RPO: 0<br/>Same Region<br/>Premium/BC Tier"]
+        OPTION2["**Active Geo-Rep**<br/>RTO: ~30 sec<br/>RPO: ~5 sec<br/>Cross Region<br/>Read Scale-Out"]
+        OPTION3["**Failover Groups**<br/>RTO: ~1 hour<br/>RPO: ~5 sec<br/>Automatic Failover<br/>Listener Endpoints"]
+        OPTION4["**Geo-Restore**<br/>RTO: ~12 hours<br/>RPO: ~1 hour<br/>From GRS Backups<br/>Lowest Cost"]
+    end
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: Failover Groups provide<br/>automatic failover with listener<br/>endpoints - no app changes needed"]
+    NOTE2["**EXAM TIP**: Zone redundant requires<br/>Premium or Business Critical tier"]
+    NOTE3["**EXAM TIP**: Scale secondary first<br/>when scaling up, primary first<br/>when scaling down"]
+
+    %% Styling
+    classDef primaryStyle fill:#1565c0,stroke:#0d47a1,color:#fff,stroke-width:2px
+    classDef secondaryStyle fill:#4fc3f7,stroke:#0288d1,color:#000
+    classDef haStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef fogStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef listenerStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef backupStyle fill:#90a4ae,stroke:#546e7a,color:#fff
+    classDef appStyle fill:#ff7043,stroke:#e64a19,color:#fff
+    classDef replicationStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef decisionStyle fill:#e1bee7,stroke:#8e24aa,color:#000
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class PRIMARY_SERVER,PRIMARY_DB primaryStyle
+    class SECONDARY_SERVER,SECONDARY_DB secondaryStyle
+    class SECONDARY_REPLICA1,SECONDARY_REPLICA2,LOCAL_REDUNDANT haStyle
+    class FOG_CONFIG,FAILOVER_POLICY fogStyle
+    class RW_LISTENER,RO_LISTENER listenerStyle
+    class PITR,LTR,GEO_RESTORE backupStyle
+    class PRIMARY_APP,SECONDARY_APP appStyle
+    class SYNC_COMMIT,ASYNC_COMMIT replicationStyle
+    class OPTION1,OPTION2,OPTION3,OPTION4 decisionStyle
+    class NOTE1,NOTE2,NOTE3 noteStyle

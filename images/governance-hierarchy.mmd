@@ -1,0 +1,87 @@
+%% AZ-305 Domain 1: Management Group Hierarchy with Policy Inheritance
+%% Reference: Azure Landing Zone architecture - CAF best practices
+%% Exam Focus: Resource organization, policy inheritance, governance scope
+
+flowchart TB
+    subgraph ROOT["Tenant Root Group"]
+        direction TB
+        ROOT_MG["**Root Management Group**<br/>Enterprise-wide Policies<br/>- Allowed Locations<br/>- Audit Diagnostics"]
+
+        subgraph PLATFORM["Platform Management Groups"]
+            direction TB
+            PLATFORM_MG["**Platform MG**<br/>Shared Services Policies"]
+
+            IDENTITY_MG["**Identity MG**<br/>- AD DS Policies<br/>- MFA Requirements"]
+            MGMT_MG["**Management MG**<br/>- Monitoring Policies<br/>- Backup Requirements"]
+            CONN_MG["**Connectivity MG**<br/>- Network Policies<br/>- Firewall Rules"]
+
+            IDENTITY_SUB[/"Identity Subscription<br/>AD DS, Entra ID Connect"/]
+            MGMT_SUB[/"Management Subscription<br/>Log Analytics, Automation<br/>Recovery Services Vault"/]
+            CONN_SUB[/"Connectivity Subscription<br/>Hub VNet, Azure Firewall<br/>ExpressRoute Gateway"/]
+        end
+
+        subgraph LANDING["Landing Zones Management Groups"]
+            direction TB
+            LZ_MG["**Landing Zones MG**<br/>Workload Policies<br/>- Required Tags<br/>- VM SKU Restrictions"]
+
+            CORP_MG["**Corp MG**<br/>Internal Workloads<br/>- Deny Public IP<br/>- Private Endpoints Only"]
+            ONLINE_MG["**Online MG**<br/>Internet-facing<br/>- WAF Required<br/>- DDoS Protection"]
+
+            CORP_PROD[/"Corp-Prod Subscription<br/>Production Workloads"/]
+            CORP_DEV[/"Corp-Dev Subscription<br/>Dev/Test Workloads"/]
+            ONLINE_PROD[/"Online-Prod Subscription<br/>Public Applications"/]
+            ONLINE_DEV[/"Online-Dev Subscription<br/>Public Dev/Test"/]
+        end
+
+        subgraph SANDBOX["Sandbox Environment"]
+            SANDBOX_MG["**Sandbox MG**<br/>Relaxed Policies<br/>- No VNet Peering<br/>- Budget Limits"]
+            SANDBOX_SUB[/"Sandbox Subscriptions<br/>Exploration & Testing"/]
+        end
+
+        DECOMM_MG["**Decommissioned MG**<br/>Deny All Policy<br/>Audit Only"]
+    end
+
+    %% Hierarchy connections
+    ROOT_MG --> PLATFORM_MG
+    ROOT_MG --> LZ_MG
+    ROOT_MG --> SANDBOX_MG
+    ROOT_MG --> DECOMM_MG
+
+    PLATFORM_MG --> IDENTITY_MG
+    PLATFORM_MG --> MGMT_MG
+    PLATFORM_MG --> CONN_MG
+
+    IDENTITY_MG --> IDENTITY_SUB
+    MGMT_MG --> MGMT_SUB
+    CONN_MG --> CONN_SUB
+
+    LZ_MG --> CORP_MG
+    LZ_MG --> ONLINE_MG
+
+    CORP_MG --> CORP_PROD
+    CORP_MG --> CORP_DEV
+    ONLINE_MG --> ONLINE_PROD
+    ONLINE_MG --> ONLINE_DEV
+
+    SANDBOX_MG --> SANDBOX_SUB
+
+    %% Policy inheritance indicators
+    INHERIT1["Policies INHERITED<br/>from parent scopes"]
+    EXEMPT["Policy EXEMPTIONS<br/>can override inheritance"]
+
+    %% Styling
+    classDef rootStyle fill:#1a1a2e,stroke:#16213e,color:#fff,stroke-width:3px
+    classDef platformStyle fill:#0f4c75,stroke:#3282b8,color:#fff,stroke-width:2px
+    classDef lzStyle fill:#2e7d32,stroke:#4caf50,color:#fff,stroke-width:2px
+    classDef sandboxStyle fill:#f57c00,stroke:#ff9800,color:#fff,stroke-width:2px
+    classDef decommStyle fill:#c62828,stroke:#ef5350,color:#fff,stroke-width:2px
+    classDef subStyle fill:#e3f2fd,stroke:#1976d2,color:#000,stroke-width:1px
+    classDef noteStyle fill:#fff3e0,stroke:#ff9800,color:#000,stroke-dasharray: 5 5
+
+    class ROOT_MG rootStyle
+    class PLATFORM_MG,IDENTITY_MG,MGMT_MG,CONN_MG platformStyle
+    class LZ_MG,CORP_MG,ONLINE_MG lzStyle
+    class SANDBOX_MG sandboxStyle
+    class DECOMM_MG decommStyle
+    class IDENTITY_SUB,MGMT_SUB,CONN_SUB,CORP_PROD,CORP_DEV,ONLINE_PROD,ONLINE_DEV,SANDBOX_SUB subStyle
+    class INHERIT1,EXEMPT noteStyle
