@@ -1,0 +1,134 @@
+%% AZ-305 Domain 1: Centralized Logging Architecture
+%% Reference: Azure Monitor architecture, Log Analytics workspace design
+%% Exam Focus: Data collection, routing, retention, destinations
+
+flowchart TB
+    subgraph SOURCES["Data Sources"]
+        direction TB
+
+        subgraph AZURE_RES["Azure Resources"]
+            VM["Virtual Machines<br/>Azure Monitor Agent"]
+            WEBAPP["App Service<br/>Diagnostic Settings"]
+            AKS["AKS Clusters<br/>Container Insights"]
+            SQL["Azure SQL<br/>Audit Logs"]
+            STORAGE["Storage Accounts<br/>Metrics & Logs"]
+            KEYVAULT["Key Vault<br/>Audit Events"]
+        end
+
+        subgraph APPS["Applications"]
+            APPINSIGHTS["Application Insights<br/>SDK / Auto-instrumentation"]
+            CUSTOM_LOGS["Custom Logs<br/>Data Collection API"]
+        end
+
+        subgraph HYBRID["Hybrid / On-Premises"]
+            ONPREM_VM["On-Premises VMs<br/>Azure Arc + AMA"]
+            SYSLOG["Syslog Sources<br/>Linux / Network Devices"]
+            CEF["CEF/Syslog<br/>Security Devices"]
+        end
+
+        subgraph SECURITY["Security Sources"]
+            DEFENDER["Microsoft Defender<br/>for Cloud"]
+            SENTINEL["Microsoft Sentinel<br/>Data Connectors"]
+            AAD_LOGS["Entra ID Logs<br/>Sign-in / Audit"]
+        end
+    end
+
+    subgraph COLLECTION["Data Collection & Routing"]
+        direction TB
+
+        DCR["Data Collection Rules<br/>Transform & Filter"]
+        DCE["Data Collection<br/>Endpoints"]
+        DIAG["Diagnostic Settings<br/>Resource Logs"]
+
+        subgraph EVENTHUB["Event Hub Namespace"]
+            EH_STREAM["Event Hub<br/>Real-time Streaming"]
+        end
+    end
+
+    subgraph DESTINATIONS["Destinations"]
+        direction TB
+
+        subgraph LAW["Log Analytics Workspace"]
+            TABLES["Tables<br/>- AzureActivity<br/>- Heartbeat<br/>- Perf<br/>- SecurityEvent<br/>- Custom_CL"]
+            RETENTION["Retention Settings<br/>Interactive: 30-730 days<br/>Archive: Up to 12 years"]
+            BASIC_LOGS["Basic Logs Tier<br/>Cost-optimized<br/>8-day retention"]
+        end
+
+        subgraph STORAGE_DEST["Storage Account"]
+            BLOB["Blob Storage<br/>Long-term Archive"]
+            LIFECYCLE["Lifecycle Management<br/>Hot -> Cool -> Archive"]
+        end
+
+        subgraph EXTERNAL["External Systems"]
+            SIEM["Third-party SIEM<br/>via Event Hub"]
+            SPLUNK["Splunk / Datadog<br/>Partner Solutions"]
+        end
+    end
+
+    subgraph ANALYSIS["Analysis & Action"]
+        direction TB
+
+        QUERIES["KQL Queries<br/>Log Analytics"]
+        WORKBOOKS["Azure Workbooks<br/>Visualization"]
+        ALERTS["Alert Rules<br/>Log / Metric"]
+        AUTOMATION["Automation<br/>Logic Apps / Functions"]
+        SENTINEL_ANALYTICS["Sentinel Analytics<br/>SIEM / SOAR"]
+    end
+
+    %% Data flow connections
+    VM --> DCR
+    WEBAPP --> DIAG
+    AKS --> DCR
+    SQL --> DIAG
+    STORAGE --> DIAG
+    KEYVAULT --> DIAG
+
+    APPINSIGHTS --> LAW
+    CUSTOM_LOGS --> DCE
+
+    ONPREM_VM --> DCR
+    SYSLOG --> DCE
+    CEF --> DCE
+
+    DEFENDER --> LAW
+    SENTINEL --> LAW
+    AAD_LOGS --> DIAG
+
+    DCR --> LAW
+    DCE --> LAW
+    DIAG --> LAW
+    DIAG --> EH_STREAM
+    DIAG --> BLOB
+
+    EH_STREAM --> SIEM
+    EH_STREAM --> SPLUNK
+
+    LAW --> QUERIES
+    QUERIES --> WORKBOOKS
+    QUERIES --> ALERTS
+    ALERTS --> AUTOMATION
+    LAW --> SENTINEL_ANALYTICS
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: DCRs enable<br/>transformation at ingestion<br/>reducing costs"]
+    NOTE2["**EXAM TIP**: Basic Logs tier<br/>costs 60% less but has<br/>limited query capabilities"]
+    NOTE3["**EXAM TIP**: Event Hub enables<br/>real-time streaming to<br/>external systems"]
+
+    %% Styling
+    classDef sourceStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef appStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef hybridStyle fill:#ab47bc,stroke:#7b1fa2,color:#fff
+    classDef securityStyle fill:#ef5350,stroke:#c62828,color:#fff
+    classDef collectionStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef destStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef analysisStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class VM,WEBAPP,AKS,SQL,STORAGE,KEYVAULT sourceStyle
+    class APPINSIGHTS,CUSTOM_LOGS appStyle
+    class ONPREM_VM,SYSLOG,CEF hybridStyle
+    class DEFENDER,SENTINEL,AAD_LOGS securityStyle
+    class DCR,DCE,DIAG,EH_STREAM collectionStyle
+    class TABLES,RETENTION,BASIC_LOGS,BLOB,LIFECYCLE,SIEM,SPLUNK destStyle
+    class QUERIES,WORKBOOKS,ALERTS,AUTOMATION,SENTINEL_ANALYTICS analysisStyle
+    class NOTE1,NOTE2,NOTE3 noteStyle

@@ -1,0 +1,152 @@
+%% AZ-305 Domain 2: Enterprise Data Platform Architecture
+%% Reference: Modern Data Warehouse, Lakehouse architecture
+%% Exam Focus: Data ingestion, storage tiers, processing, analytics
+
+flowchart TB
+    subgraph SOURCES["Data Sources"]
+        direction TB
+
+        subgraph OPERATIONAL["Operational Data"]
+            OLTP["OLTP Databases<br/>SQL Server, Oracle"]
+            SAAS["SaaS Applications<br/>Dynamics 365, Salesforce"]
+            API_SRC["REST APIs<br/>Third-party Services"]
+        end
+
+        subgraph STREAMING["Streaming Data"]
+            IOT["IoT Devices<br/>Telemetry"]
+            EVENTS["Event Streams<br/>Clickstream, Logs"]
+            CDC["Change Data Capture<br/>Debezium"]
+        end
+
+        subgraph FILES["File Sources"]
+            ONPREM_FILES["On-premises Files<br/>CSV, Excel, XML"]
+            SFTP["SFTP / FTP<br/>Partner Data"]
+            CLOUD_FILES["Cloud Storage<br/>AWS S3, GCS"]
+        end
+    end
+
+    subgraph INGESTION["Data Ingestion Layer"]
+        direction TB
+
+        ADF["Azure Data Factory<br/>Orchestration & ETL"]
+        EH["Event Hubs<br/>Stream Ingestion"]
+        IOT_HUB["IoT Hub<br/>Device Connectivity"]
+        SYNAPSE_PIPE["Synapse Pipelines<br/>Integration Runtime"]
+    end
+
+    subgraph STORAGE["Data Lake Storage (ADLS Gen2)"]
+        direction TB
+
+        subgraph BRONZE["Bronze Layer (Raw)"]
+            RAW["Raw Data Zone<br/>Original Format<br/>Full History"]
+        end
+
+        subgraph SILVER["Silver Layer (Cleansed)"]
+            CLEANSED["Cleansed Data<br/>Validated, Deduplicated<br/>Delta Lake Format"]
+        end
+
+        subgraph GOLD["Gold Layer (Curated)"]
+            CURATED["Business-Ready Data<br/>Aggregated, Enriched<br/>Star Schema"]
+        end
+    end
+
+    subgraph PROCESSING["Data Processing"]
+        direction TB
+
+        SPARK["Synapse Spark Pools<br/>Big Data Processing<br/>ML Model Training"]
+        SERVERLESS_SQL["Serverless SQL Pools<br/>Ad-hoc Queries<br/>Data Exploration"]
+        MAPPING_DF["Mapping Data Flows<br/>Visual ETL<br/>Code-free Transforms"]
+        DATABRICKS["Azure Databricks<br/>Advanced Analytics<br/>MLflow Integration"]
+    end
+
+    subgraph SERVING["Serving Layer"]
+        direction TB
+
+        DEDICATED_SQL["Dedicated SQL Pool<br/>Enterprise DW<br/>MPP Architecture"]
+        SYNAPSE_LINK["Synapse Link<br/>Real-time Analytics<br/>HTAP"]
+        ANALYSIS_SVC["Analysis Services<br/>Semantic Models<br/>OLAP Cubes"]
+    end
+
+    subgraph CONSUME["Consumption Layer"]
+        direction TB
+
+        PBI["Power BI<br/>Dashboards & Reports<br/>Self-service BI"]
+        EXCEL["Excel<br/>Pivot Tables<br/>Direct Query"]
+        CUSTOM_APPS["Custom Applications<br/>REST APIs<br/>SDKs"]
+        ML_STUDIO["Azure ML Studio<br/>Model Deployment<br/>Batch Inference"]
+    end
+
+    subgraph GOVERN["Data Governance"]
+        PURVIEW["Microsoft Purview<br/>Data Catalog<br/>Lineage Tracking<br/>Classification"]
+    end
+
+    %% Data flow connections
+    OLTP --> ADF
+    SAAS --> ADF
+    API_SRC --> ADF
+    ONPREM_FILES --> ADF
+    SFTP --> ADF
+    CLOUD_FILES --> ADF
+
+    IOT --> IOT_HUB
+    IOT --> EH
+    EVENTS --> EH
+    CDC --> EH
+
+    IOT_HUB --> RAW
+    EH --> RAW
+    ADF --> RAW
+    SYNAPSE_PIPE --> RAW
+
+    RAW --> SPARK
+    RAW --> SERVERLESS_SQL
+    SPARK --> CLEANSED
+    MAPPING_DF --> CLEANSED
+
+    CLEANSED --> SPARK
+    CLEANSED --> DATABRICKS
+    SPARK --> CURATED
+    DATABRICKS --> CURATED
+
+    CURATED --> DEDICATED_SQL
+    CURATED --> SYNAPSE_LINK
+    CURATED --> ANALYSIS_SVC
+
+    DEDICATED_SQL --> PBI
+    ANALYSIS_SVC --> PBI
+    SYNAPSE_LINK --> PBI
+    DEDICATED_SQL --> EXCEL
+    CURATED --> CUSTOM_APPS
+    CURATED --> ML_STUDIO
+
+    %% Governance spans all layers
+    PURVIEW -.-> STORAGE
+    PURVIEW -.-> SERVING
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: Medallion Architecture<br/>Bronze -> Silver -> Gold<br/>enables incremental refinement"]
+    NOTE2["**EXAM TIP**: Delta Lake provides<br/>ACID transactions on data lake"]
+    NOTE3["**EXAM TIP**: Serverless SQL is<br/>pay-per-query, ideal for exploration"]
+
+    %% Styling
+    classDef sourceStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef ingestStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef bronzeStyle fill:#8d6e63,stroke:#5d4037,color:#fff
+    classDef silverStyle fill:#90a4ae,stroke:#546e7a,color:#fff
+    classDef goldStyle fill:#ffd54f,stroke:#ffa000,color:#000
+    classDef processStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef serveStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef consumeStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef governStyle fill:#ec407a,stroke:#c2185b,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class OLTP,SAAS,API_SRC,IOT,EVENTS,CDC,ONPREM_FILES,SFTP,CLOUD_FILES sourceStyle
+    class ADF,EH,IOT_HUB,SYNAPSE_PIPE ingestStyle
+    class RAW bronzeStyle
+    class CLEANSED silverStyle
+    class CURATED goldStyle
+    class SPARK,SERVERLESS_SQL,MAPPING_DF,DATABRICKS processStyle
+    class DEDICATED_SQL,SYNAPSE_LINK,ANALYSIS_SVC serveStyle
+    class PBI,EXCEL,CUSTOM_APPS,ML_STUDIO consumeStyle
+    class PURVIEW governStyle
+    class NOTE1,NOTE2,NOTE3 noteStyle

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "identityName": {
+      "value": "app-workload-identity"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "application-identity",
+        "examObjective": "AZ-305-IdentityManagement",
+        "application": "contoso-app"
+      }
+    },
+    "roleAssignments": {
+      "value": [
+        "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+        "4633458b-17de-408a-b874-0445c86b69e6"
+      ]
+    }
+  }
+}

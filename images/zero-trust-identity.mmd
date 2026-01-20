@@ -1,0 +1,102 @@
+%% AZ-305 Domain 1: Zero Trust Identity Architecture
+%% Reference: Microsoft Zero Trust Deployment Guide
+%% Exam Focus: Conditional Access, MFA, Device Compliance, Identity Protection
+
+flowchart TB
+    subgraph USERS["Identity Sources"]
+        USER["User / Employee"]
+        GUEST["Guest / B2B User"]
+        WORKLOAD["Workload Identity<br/>Managed Identity"]
+    end
+
+    subgraph DEVICES["Device Types"]
+        MANAGED["Managed Device<br/>Intune Enrolled<br/>Compliant"]
+        UNMANAGED["Unmanaged Device<br/>BYOD"]
+        PRIV_WS["Privileged Access<br/>Workstation (PAW)"]
+    end
+
+    subgraph ENTRA["Microsoft Entra ID"]
+        direction TB
+
+        subgraph AUTH["Authentication"]
+            MFA["Multi-Factor<br/>Authentication"]
+            PASSKEY["Passwordless<br/>FIDO2 / Passkeys"]
+            SSO["Single Sign-On"]
+        end
+
+        subgraph PROTECTION["Identity Protection"]
+            RISK_USER["User Risk<br/>Detection"]
+            RISK_SIGNIN["Sign-in Risk<br/>Detection"]
+            RISK_WORKLOAD["Workload Identity<br/>Risk"]
+        end
+
+        subgraph CA["Conditional Access Engine"]
+            direction LR
+            SIGNALS["**SIGNALS**<br/>- User/Group<br/>- Location/IP<br/>- Device State<br/>- App<br/>- Real-time Risk"]
+
+            DECISIONS["**DECISIONS**<br/>- Allow<br/>- Block<br/>- Require MFA<br/>- Require Compliance<br/>- Session Controls"]
+
+            SIGNALS --> DECISIONS
+        end
+    end
+
+    subgraph APPS["Target Applications"]
+        M365["Microsoft 365"]
+        AZURE["Azure Portal<br/>& Resources"]
+        SAAS["SaaS Apps"]
+        ONPREM["On-Premises Apps<br/>via App Proxy"]
+        CUSTOM["Custom Apps"]
+    end
+
+    subgraph CONTROLS["Session Controls"]
+        SESSION_CA["Conditional Access<br/>App Control"]
+        MCAS["Defender for<br/>Cloud Apps"]
+        SESSION_TIME["Sign-in Frequency<br/>Persistent Browser"]
+    end
+
+    subgraph GOVERN["Identity Governance"]
+        ACCESS_REV["Access Reviews"]
+        ENTITLE["Entitlement<br/>Management"]
+        PIM["Privileged Identity<br/>Management (PIM)"]
+        LIFECYCLE["Lifecycle<br/>Workflows"]
+    end
+
+    %% Flow connections
+    USER --> AUTH
+    GUEST --> AUTH
+    WORKLOAD --> AUTH
+
+    MANAGED --> CA
+    UNMANAGED --> CA
+    PRIV_WS --> CA
+
+    AUTH --> CA
+    PROTECTION --> CA
+
+    CA -->|Allowed| APPS
+    CA -->|With Controls| CONTROLS
+    CONTROLS --> APPS
+
+    APPS --> GOVERN
+
+    %% Key Decision Points
+    NOTE1["**EXAM TIP**: Conditional Access<br/>evaluates signals to make<br/>access decisions in real-time"]
+    NOTE2["**EXAM TIP**: PIM provides<br/>just-in-time privileged access<br/>with approval workflows"]
+    NOTE3["**EXAM TIP**: Zero Trust = <br/>Never trust, always verify"]
+
+    %% Styling
+    classDef userStyle fill:#4fc3f7,stroke:#0288d1,color:#000
+    classDef deviceStyle fill:#81c784,stroke:#388e3c,color:#000
+    classDef entraStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef appStyle fill:#ffb74d,stroke:#f57c00,color:#000
+    classDef controlStyle fill:#f06292,stroke:#c2185b,color:#fff
+    classDef governStyle fill:#4db6ac,stroke:#00796b,color:#000
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class USER,GUEST,WORKLOAD userStyle
+    class MANAGED,UNMANAGED,PRIV_WS deviceStyle
+    class MFA,PASSKEY,SSO,RISK_USER,RISK_SIGNIN,RISK_WORKLOAD,SIGNALS,DECISIONS entraStyle
+    class M365,AZURE,SAAS,ONPREM,CUSTOM appStyle
+    class SESSION_CA,MCAS,SESSION_TIME controlStyle
+    class ACCESS_REV,ENTITLE,PIM,LIFECYCLE governStyle
+    class NOTE1,NOTE2,NOTE3 noteStyle

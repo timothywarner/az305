@@ -1,0 +1,122 @@
+%% AZ-305 Domain 2: Cosmos DB Multi-Region Architecture
+%% Reference: Azure Cosmos DB global distribution, consistency levels
+%% Exam Focus: Consistency levels, multi-region writes, failover
+
+flowchart TB
+    subgraph GLOBAL["Global Distribution Architecture"]
+        direction TB
+
+        subgraph WEST_US["West US 2 (Primary Write Region)"]
+            WEST_ACCOUNT["Cosmos DB Account<br/>Primary Region"]
+            WEST_P1["Partition 1<br/>Physical Partition"]
+            WEST_P2["Partition 2<br/>Physical Partition"]
+            WEST_P3["Partition 3<br/>Physical Partition"]
+
+            WEST_APP["Application<br/>West US"]
+        end
+
+        subgraph EAST_US["East US 2 (Read Region)"]
+            EAST_REPLICA["Cosmos DB Replica<br/>Read Region"]
+            EAST_P1["Partition 1<br/>Replica"]
+            EAST_P2["Partition 2<br/>Replica"]
+            EAST_P3["Partition 3<br/>Replica"]
+
+            EAST_APP["Application<br/>East US"]
+        end
+
+        subgraph EUROPE["West Europe (Read Region)"]
+            EU_REPLICA["Cosmos DB Replica<br/>Read Region"]
+            EU_P1["Partition 1<br/>Replica"]
+            EU_P2["Partition 2<br/>Replica"]
+            EU_P3["Partition 3<br/>Replica"]
+
+            EU_APP["Application<br/>Europe"]
+        end
+
+        subgraph ASIA["Southeast Asia (Read Region)"]
+            ASIA_REPLICA["Cosmos DB Replica<br/>Read Region"]
+            ASIA_P1["Partition 1<br/>Replica"]
+            ASIA_P2["Partition 2<br/>Replica"]
+            ASIA_P3["Partition 3<br/>Replica"]
+
+            ASIA_APP["Application<br/>Asia"]
+        end
+    end
+
+    subgraph REPLICATION["Replication & Consistency"]
+        direction LR
+
+        CONSISTENCY["**Consistency Levels**"]
+
+        STRONG["**Strong**<br/>Linearizable<br/>RPO = 0<br/>Higher Latency<br/>Single Write Region Only"]
+        BOUNDED["**Bounded Staleness**<br/>Consistent Prefix<br/>K versions or T time<br/>RPO = K & T"]
+        SESSION["**Session**<br/>Read Your Writes<br/>Monotonic Reads<br/>Most Common"]
+        CONSISTENT_PREFIX["**Consistent Prefix**<br/>No Out-of-Order<br/>Reads Never See Partial"]
+        EVENTUAL["**Eventual**<br/>Lowest Latency<br/>No Ordering Guarantee<br/>Highest Throughput"]
+
+        CONSISTENCY --- STRONG
+        CONSISTENCY --- BOUNDED
+        CONSISTENCY --- SESSION
+        CONSISTENCY --- CONSISTENT_PREFIX
+        CONSISTENCY --- EVENTUAL
+    end
+
+    subgraph FAILOVER["Failover & HA"]
+        direction TB
+
+        AUTO_FAILOVER["Service-Managed Failover<br/>Automatic Region Failover<br/>10-15 min RTO"]
+        MANUAL_FAILOVER["Manual Failover<br/>Planned Maintenance<br/>Zero Data Loss"]
+        MULTI_WRITE["Multi-Region Writes<br/>Active-Active<br/>Conflict Resolution"]
+    end
+
+    %% Replication flows
+    WEST_ACCOUNT -->|Async Replication| EAST_REPLICA
+    WEST_ACCOUNT -->|Async Replication| EU_REPLICA
+    WEST_ACCOUNT -->|Async Replication| ASIA_REPLICA
+
+    WEST_P1 --> WEST_P2
+    WEST_P2 --> WEST_P3
+
+    %% Application connections
+    WEST_APP -->|Read/Write| WEST_ACCOUNT
+    EAST_APP -->|Read Only| EAST_REPLICA
+    EU_APP -->|Read Only| EU_REPLICA
+    ASIA_APP -->|Read Only| ASIA_REPLICA
+
+    %% Failover connections
+    WEST_ACCOUNT -.-> AUTO_FAILOVER
+    WEST_ACCOUNT -.-> MANUAL_FAILOVER
+    WEST_ACCOUNT -.-> MULTI_WRITE
+
+    %% Exam decision points
+    NOTE1["**EXAM TIP**: Strong consistency<br/>requires single write region<br/>and increases latency"]
+    NOTE2["**EXAM TIP**: Session consistency<br/>is the default and most common<br/>for web applications"]
+    NOTE3["**EXAM TIP**: Multi-region writes<br/>cannot use Strong consistency<br/>Use Bounded Staleness instead"]
+    NOTE4["**EXAM TIP**: 99.999% SLA requires<br/>multi-region configuration"]
+
+    %% Styling
+    classDef primaryStyle fill:#1565c0,stroke:#0d47a1,color:#fff,stroke-width:3px
+    classDef replicaStyle fill:#4fc3f7,stroke:#0288d1,color:#000
+    classDef partitionStyle fill:#e3f2fd,stroke:#1976d2,color:#000
+    classDef appStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef consistencyStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef strongStyle fill:#ef5350,stroke:#c62828,color:#fff
+    classDef boundedStyle fill:#ff7043,stroke:#e64a19,color:#fff
+    classDef sessionStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef prefixStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef eventualStyle fill:#ffa726,stroke:#f57c00,color:#000
+    classDef failoverStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class WEST_ACCOUNT primaryStyle
+    class EAST_REPLICA,EU_REPLICA,ASIA_REPLICA replicaStyle
+    class WEST_P1,WEST_P2,WEST_P3,EAST_P1,EAST_P2,EAST_P3,EU_P1,EU_P2,EU_P3,ASIA_P1,ASIA_P2,ASIA_P3 partitionStyle
+    class WEST_APP,EAST_APP,EU_APP,ASIA_APP appStyle
+    class CONSISTENCY consistencyStyle
+    class STRONG strongStyle
+    class BOUNDED boundedStyle
+    class SESSION sessionStyle
+    class CONSISTENT_PREFIX prefixStyle
+    class EVENTUAL eventualStyle
+    class AUTO_FAILOVER,MANUAL_FAILOVER,MULTI_WRITE failoverStyle
+    class NOTE1,NOTE2,NOTE3,NOTE4 noteStyle
