@@ -7,7 +7,7 @@ Welcome to the ultimate resource hub for preparing for the **AZ-305 Microsoft Az
 ---
 
 ## 📬 **Contact Information**
-- **[Email](mailto:timothywarner316@gmail.com)**
+- **[Email](mailto:tim@techtrainertim.com)**
 - **[LinkedIn](https://www.linkedin.com/in/timothywarner316/)**
 - **[YouTube Channel](https://www.youtube.com/channel/UCim7PFtynyPuzMHtbNyYOXA)**
 - **[Website](https://techtrainertim.com)**
