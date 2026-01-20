@@ -1,0 +1,162 @@
+%% AZ-305 Domain 4: API Architecture with APIM, Front Door, App Gateway
+%% Reference: Azure API Management architecture patterns
+%% Exam Focus: API gateway patterns, WAF, caching, throttling
+
+flowchart TB
+    subgraph CLIENTS["API Consumers"]
+        direction TB
+        WEB_APP["Web Applications"]
+        MOBILE["Mobile Apps"]
+        PARTNERS["Partner APIs<br/>B2B Integration"]
+        IOT_DEV["IoT Devices"]
+        INTERNAL["Internal Services"]
+    end
+
+    subgraph GLOBAL_EDGE["Global Edge Layer"]
+        direction TB
+
+        FRONT_DOOR["Azure Front Door Premium<br/>- Global Load Balancing<br/>- CDN & Caching<br/>- WAF Policy<br/>- DDoS Protection L3/L4"]
+
+        FD_RULES["Front Door Rules Engine<br/>- URL Rewrite<br/>- Header Manipulation<br/>- Routing Rules"]
+
+        FD_ORIGINS["Origin Groups<br/>- Primary: East US<br/>- Secondary: West Europe<br/>- Health Probes"]
+    end
+
+    subgraph REGIONAL_INGRESS["Regional Ingress Layer"]
+        direction TB
+
+        subgraph REGION1["Primary Region (East US)"]
+            APP_GW1["Application Gateway v2<br/>- WAF_v2 Policy<br/>- SSL Termination<br/>- Path-based Routing"]
+        end
+
+        subgraph REGION2["Secondary Region (West Europe)"]
+            APP_GW2["Application Gateway v2<br/>- WAF_v2 Policy<br/>- Auto-failover Target"]
+        end
+    end
+
+    subgraph APIM_LAYER["API Management Layer"]
+        direction TB
+
+        subgraph APIM_INTERNAL["APIM (Internal VNet Mode)"]
+            APIM_GW["APIM Gateway<br/>- Request Processing<br/>- Policy Enforcement<br/>- Rate Limiting"]
+
+            subgraph APIM_POLICIES["Inbound/Outbound Policies"]
+                AUTH_POLICY["Authentication<br/>- OAuth 2.0 / JWT<br/>- API Key<br/>- Client Certs"]
+                TRANSFORM["Transformation<br/>- Request/Response<br/>- XML to JSON<br/>- Set Headers"]
+                CACHE["Caching Policy<br/>- Internal Cache<br/>- External Redis<br/>- Vary by headers"]
+                RATE_LIMIT["Rate Limiting<br/>- Per subscription<br/>- Per API/Operation<br/>- Quota management"]
+                CORS["CORS Policy<br/>- Allowed Origins<br/>- Methods/Headers"]
+            end
+
+            APIM_PRODUCTS["Products & Subscriptions<br/>- Starter (Free tier)<br/>- Premium (Paid)<br/>- Internal Only"]
+
+            DEV_PORTAL["Developer Portal<br/>- API Documentation<br/>- Interactive Console<br/>- Self-service Keys"]
+        end
+
+        SELF_HOSTED["Self-Hosted Gateway<br/>- On-premises<br/>- Multi-cloud<br/>- Edge locations"]
+    end
+
+    subgraph BACKENDS["Backend Services"]
+        direction TB
+
+        subgraph AZURE_BACKENDS["Azure-Hosted Backends"]
+            APP_SERVICE["App Service<br/>REST APIs"]
+            FUNCTIONS["Azure Functions<br/>Serverless APIs"]
+            AKS["AKS Cluster<br/>Microservices"]
+            CONTAINER_APPS["Container Apps<br/>Event-driven APIs"]
+            LOGIC_APPS["Logic Apps<br/>Workflow APIs"]
+        end
+
+        subgraph EXTERNAL_BACKENDS["External Backends"]
+            ONPREM_API["On-premises APIs<br/>via ExpressRoute"]
+            PARTNER_API["Partner APIs<br/>External SaaS"]
+            LEGACY["Legacy SOAP<br/>Services"]
+        end
+    end
+
+    subgraph SECURITY["Security & Governance"]
+        direction TB
+
+        ENTRA_ID["Microsoft Entra ID<br/>- OAuth 2.0 Provider<br/>- App Registrations<br/>- Managed Identities"]
+
+        KEY_VAULT["Key Vault<br/>- API Secrets<br/>- Certificates<br/>- Named Values"]
+
+        DEFENDER["Defender for APIs<br/>- Threat Detection<br/>- Security Posture<br/>- API Discovery"]
+    end
+
+    subgraph MONITORING["Monitoring & Analytics"]
+        APP_INSIGHTS["Application Insights<br/>- Request Tracing<br/>- Dependency Tracking<br/>- Performance Metrics"]
+        EVENT_HUB["Event Hub<br/>- API Logging<br/>- Real-time Analytics"]
+        LOG_ANALYTICS["Log Analytics<br/>- KQL Queries<br/>- Dashboards"]
+    end
+
+    %% Traffic flow
+    WEB_APP --> FRONT_DOOR
+    MOBILE --> FRONT_DOOR
+    PARTNERS --> FRONT_DOOR
+    IOT_DEV --> FRONT_DOOR
+    INTERNAL --> APIM_GW
+
+    FRONT_DOOR --> FD_RULES
+    FD_RULES --> FD_ORIGINS
+    FD_ORIGINS --> APP_GW1
+    FD_ORIGINS --> APP_GW2
+
+    APP_GW1 --> APIM_GW
+    APP_GW2 --> APIM_GW
+
+    APIM_GW --> APIM_POLICIES
+    APIM_POLICIES --> BACKENDS
+
+    %% Policy connections
+    AUTH_POLICY --> ENTRA_ID
+    CACHE --> REDIS
+    APIM_GW --> KEY_VAULT
+
+    %% Backend connections
+    APIM_GW --> APP_SERVICE
+    APIM_GW --> FUNCTIONS
+    APIM_GW --> AKS
+    APIM_GW --> CONTAINER_APPS
+    APIM_GW --> LOGIC_APPS
+    SELF_HOSTED --> ONPREM_API
+
+    %% Monitoring
+    APIM_GW --> APP_INSIGHTS
+    APIM_GW --> EVENT_HUB
+    EVENT_HUB --> LOG_ANALYTICS
+
+    %% Security
+    DEFENDER --> APIM_GW
+
+    %% External cache
+    REDIS["Azure Cache Redis<br/>External Cache"]
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: Use Front Door for<br/>global distribution + APIM<br/>for API management policies"]
+    NOTE2["**EXAM TIP**: Internal VNet mode<br/>requires App Gateway for<br/>public access to APIM"]
+    NOTE3["**EXAM TIP**: APIM policies execute<br/>in order: Inbound -> Backend<br/>-> Outbound -> On-Error"]
+    NOTE4["**EXAM TIP**: Self-hosted gateway<br/>enables hybrid/multi-cloud<br/>API management"]
+
+    %% Styling
+    classDef clientStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef edgeStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef gwStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef apimStyle fill:#ff7043,stroke:#e64a19,color:#fff
+    classDef policyStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef backendStyle fill:#4fc3f7,stroke:#0288d1,color:#000
+    classDef externalStyle fill:#78909c,stroke:#455a64,color:#fff
+    classDef securityStyle fill:#ef5350,stroke:#c62828,color:#fff
+    classDef monitorStyle fill:#90a4ae,stroke:#546e7a,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class WEB_APP,MOBILE,PARTNERS,IOT_DEV,INTERNAL clientStyle
+    class FRONT_DOOR,FD_RULES,FD_ORIGINS edgeStyle
+    class APP_GW1,APP_GW2 gwStyle
+    class APIM_GW,DEV_PORTAL,APIM_PRODUCTS,SELF_HOSTED apimStyle
+    class AUTH_POLICY,TRANSFORM,CACHE,RATE_LIMIT,CORS policyStyle
+    class APP_SERVICE,FUNCTIONS,AKS,CONTAINER_APPS,LOGIC_APPS backendStyle
+    class ONPREM_API,PARTNER_API,LEGACY externalStyle
+    class ENTRA_ID,KEY_VAULT,DEFENDER securityStyle
+    class APP_INSIGHTS,EVENT_HUB,LOG_ANALYTICS,REDIS monitorStyle
+    class NOTE1,NOTE2,NOTE3,NOTE4 noteStyle

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "clusterName": {
+      "value": "contoso-prod"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "kubernetesVersion": {
+      "value": "1.29"
+    },
+    "dnsPrefix": {
+      "value": "contoso-prod"
+    },
+    "systemNodeVmSize": {
+      "value": "Standard_D4s_v5"
+    },
+    "systemNodeCount": {
+      "value": 3
+    },
+    "userNodeVmSize": {
+      "value": "Standard_D4s_v5"
+    },
+    "userNodeMinCount": {
+      "value": 2
+    },
+    "userNodeMaxCount": {
+      "value": 10
+    },
+    "enableAadIntegration": {
+      "value": true
+    },
+    "aadAdminGroupObjectIds": {
+      "value": []
+    },
+    "enableAzureRbac": {
+      "value": true
+    },
+    "enablePrivateCluster": {
+      "value": false
+    },
+    "vnetId": {
+      "value": ""
+    },
+    "aksSubnetName": {
+      "value": "AksNodes"
+    },
+    "podCidr": {
+      "value": "10.244.0.0/16"
+    },
+    "serviceCidr": {
+      "value": "10.0.0.0/16"
+    },
+    "dnsServiceIp": {
+      "value": "10.0.0.10"
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": ""
+    },
+    "enableContainerInsights": {
+      "value": true
+    },
+    "enableDefender": {
+      "value": true
+    },
+    "enableKeyVaultSecretsProvider": {
+      "value": true
+    },
+    "enableAzurePolicy": {
+      "value": true
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "kubernetes",
+        "examObjective": "AZ-305-Compute"
+      }
+    }
+  }
+}

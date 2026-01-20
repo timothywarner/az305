@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "frontDoorName": {
+      "value": "contoso-global"
+    },
+    "skuName": {
+      "value": "Premium_AzureFrontDoor"
+    },
+    "enableWaf": {
+      "value": true
+    },
+    "wafMode": {
+      "value": "Prevention"
+    },
+    "originGroupName": {
+      "value": "web-origin-group"
+    },
+    "primaryOriginHostname": {
+      "value": "app-eastus.contoso.com"
+    },
+    "secondaryOriginHostname": {
+      "value": "app-westus.contoso.com"
+    },
+    "originHttpPort": {
+      "value": 80
+    },
+    "originHttpsPort": {
+      "value": 443
+    },
+    "enablePrivateLink": {
+      "value": false
+    },
+    "privateLinkResourceId": {
+      "value": ""
+    },
+    "privateLinkLocation": {
+      "value": ""
+    },
+    "customDomainName": {
+      "value": ""
+    },
+    "enableCaching": {
+      "value": true
+    },
+    "cacheDurationSeconds": {
+      "value": 86400
+    },
+    "endpointName": {
+      "value": "web-endpoint"
+    },
+    "routeName": {
+      "value": "web-route"
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": ""
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "front-door",
+        "examObjective": "AZ-305-Networking"
+      }
+    }
+  }
+}

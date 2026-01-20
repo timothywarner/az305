@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "contoso-apps"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": "/subscriptions/{subscription-id}/resourceGroups/rg-monitoring/providers/Microsoft.OperationalInsights/workspaces/log-contoso-prod"
+    },
+    "isInternalOnly": {
+      "value": false
+    },
+    "vnetId": {
+      "value": ""
+    },
+    "infrastructureSubnetName": {
+      "value": "ContainerAppsInfra"
+    },
+    "zoneRedundant": {
+      "value": true
+    },
+    "enableDapr": {
+      "value": true
+    },
+    "enableWorkloadProfiles": {
+      "value": true
+    },
+    "deploySampleApp": {
+      "value": false
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "container-apps",
+        "examObjective": "AZ-305-Compute"
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "namePrefix": {
+      "value": "contoso"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "vnetId": {
+      "value": "/subscriptions/{subscription-id}/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub"
+    },
+    "privateEndpointSubnetName": {
+      "value": "PrivateEndpoints"
+    },
+    "deployStorageBlobEndpoint": {
+      "value": false
+    },
+    "storageAccountId": {
+      "value": ""
+    },
+    "deployKeyVaultEndpoint": {
+      "value": false
+    },
+    "keyVaultId": {
+      "value": ""
+    },
+    "deploySqlEndpoint": {
+      "value": false
+    },
+    "sqlServerId": {
+      "value": ""
+    },
+    "deployCosmosDbEndpoint": {
+      "value": false
+    },
+    "cosmosDbAccountId": {
+      "value": ""
+    },
+    "deployAcrEndpoint": {
+      "value": false
+    },
+    "acrId": {
+      "value": ""
+    },
+    "createPrivateDnsZones": {
+      "value": true
+    },
+    "linkDnsZonesToVnet": {
+      "value": true
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "private-endpoints",
+        "examObjective": "AZ-305-Networking"
+      }
+    }
+  }
+}

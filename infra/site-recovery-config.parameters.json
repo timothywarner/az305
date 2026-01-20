@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "recoveryServicesVaultName": {
+      "value": "rsv-contoso-backup"
+    },
+    "primaryLocation": {
+      "value": "eastus"
+    },
+    "secondaryLocation": {
+      "value": "westus2"
+    },
+    "sourceResourceGroupName": {
+      "value": "rg-contoso-prod-eastus"
+    },
+    "targetResourceGroupName": {
+      "value": "rg-contoso-dr-westus2"
+    },
+    "sourceVnetId": {
+      "value": "/subscriptions/{subscription-id}/resourceGroups/rg-contoso-prod-eastus/providers/Microsoft.Network/virtualNetworks/vnet-prod-eastus"
+    },
+    "targetVnetId": {
+      "value": "/subscriptions/{subscription-id}/resourceGroups/rg-contoso-dr-westus2/providers/Microsoft.Network/virtualNetworks/vnet-dr-westus2"
+    },
+    "cacheStorageAccountId": {
+      "value": "/subscriptions/{subscription-id}/resourceGroups/rg-contoso-prod-eastus/providers/Microsoft.Storage/storageAccounts/stasrcache"
+    },
+    "replicationPolicyName": {
+      "value": "policy-24hour-retention"
+    },
+    "appConsistentFrequencyInMinutes": {
+      "value": 240
+    },
+    "crashConsistentFrequencyInMinutes": {
+      "value": 5
+    },
+    "recoveryPointRetentionInHours": {
+      "value": 24
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "disaster-recovery",
+        "examObjective": "AZ-305-BusinessContinuity"
+      }
+    }
+  }
+}

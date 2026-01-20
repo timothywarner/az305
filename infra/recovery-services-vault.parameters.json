@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vaultName": {
+      "value": "contoso-backup"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "storageType": {
+      "value": "GeoRedundant"
+    },
+    "enableCrossRegionRestore": {
+      "value": true
+    },
+    "enableSoftDelete": {
+      "value": true
+    },
+    "softDeleteRetentionDays": {
+      "value": 14
+    },
+    "enableEnhancedSecurity": {
+      "value": true
+    },
+    "createDefaultVmPolicy": {
+      "value": true
+    },
+    "createDefaultSqlPolicy": {
+      "value": true
+    },
+    "createDefaultFileSharePolicy": {
+      "value": true
+    },
+    "vmBackupScheduleTime": {
+      "value": "23:00"
+    },
+    "vmBackupRetentionDays": {
+      "value": 30
+    },
+    "vmWeeklyRetentionWeeks": {
+      "value": 12
+    },
+    "vmMonthlyRetentionMonths": {
+      "value": 12
+    },
+    "vmYearlyRetentionYears": {
+      "value": 3
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "backup-recovery",
+        "examObjective": "AZ-305-BusinessContinuity"
+      }
+    }
+  }
+}

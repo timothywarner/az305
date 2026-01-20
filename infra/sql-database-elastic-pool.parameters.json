@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "sqlServerNamePrefix": {
+      "value": "contoso"
+    },
+    "primaryLocation": {
+      "value": "eastus"
+    },
+    "secondaryLocation": {
+      "value": "westus2"
+    },
+    "aadAdminObjectId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "aadAdminLogin": {
+      "value": "sql-admin-group"
+    },
+    "sqlAdminLogin": {
+      "value": "sqladmin"
+    },
+    "elasticPoolName": {
+      "value": "pool-standard"
+    },
+    "elasticPoolSku": {
+      "value": "GP_Gen5"
+    },
+    "elasticPoolCapacity": {
+      "value": 2
+    },
+    "elasticPoolMaxSizeGB": {
+      "value": 32
+    },
+    "databaseNames": {
+      "value": [
+        "db-tenant1",
+        "db-tenant2",
+        "db-shared"
+      ]
+    },
+    "failoverGroupName": {
+      "value": "fog-contoso-prod"
+    },
+    "failoverPolicy": {
+      "value": "Automatic"
+    },
+    "gracePeriodMinutes": {
+      "value": 60
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "database",
+        "examObjective": "AZ-305-DataStorage"
+      }
+    }
+  }
+}

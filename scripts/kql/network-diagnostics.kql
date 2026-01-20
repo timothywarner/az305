@@ -1,0 +1,364 @@
+// =============================================================================
+// FILE: network-diagnostics.kql
+// SYNOPSIS: Network diagnostics and NSG flow log analysis queries
+// DESCRIPTION:
+//   Collection of KQL queries for network monitoring and troubleshooting:
+//   - NSG flow log analysis
+//   - Traffic pattern identification
+//   - Denied traffic investigation
+//   - Network connectivity diagnostics
+//   - Traffic Analytics queries
+//
+// AZ-305 EXAM OBJECTIVES:
+//   - Design network infrastructure solutions
+//   - Implement network security and monitoring
+//   - Troubleshoot network connectivity issues
+//   - Analyze traffic patterns for security and optimization
+//
+// PREREQUISITES:
+//   - NSG Flow Logs enabled and sent to Log Analytics
+//   - Traffic Analytics configured (for AzureNetworkAnalytics_CL)
+//   - Network Watcher enabled in target regions
+//   - Appropriate RBAC permissions
+//
+// TABLES USED:
+//   - AzureNetworkAnalytics_CL: Traffic Analytics processed data
+//   - AzureDiagnostics: NSG diagnostic logs
+//   - NTANetAnalytics: New Traffic Analytics table format
+//   - NTAIpDetails: Traffic Analytics IP information
+//
+// REFERENCES:
+//   - https://learn.microsoft.com/azure/network-watcher/traffic-analytics
+//   - https://learn.microsoft.com/azure/network-watcher/nsg-flow-logs-overview
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// QUERY 1: Denied Traffic Summary
+// -----------------------------------------------------------------------------
+// WHY: Understanding denied traffic helps identify misconfigurations,
+// potential attacks, or legitimate traffic that needs NSG rule updates.
+// High volumes of denied traffic warrant investigation.
+// -----------------------------------------------------------------------------
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where SubType_s == "FlowLog"
+| where FlowStatus_s == "D"  // Denied
+| summarize
+    DeniedFlows = sum(DeniedInFlows_d + DeniedOutFlows_d)
+    by NSGRule_s, NSGList_s
+| sort by DeniedFlows desc
+| take 20
+| project NSG = NSGList_s, Rule = NSGRule_s, DeniedFlows
+
+// -----------------------------------------------------------------------------
+// QUERY 2: Top Talkers - Source IPs by Traffic Volume
+// -----------------------------------------------------------------------------
+// WHY: Identifying high-volume traffic sources helps with capacity
+// planning, security analysis, and understanding application traffic
+// patterns. Unusual top talkers may indicate compromise.
+// -----------------------------------------------------------------------------
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where SubType_s == "FlowLog"
+| where isnotempty(SrcIP_s)
+| summarize
+    TotalFlows = sum(AllowedInFlows_d + AllowedOutFlows_d + DeniedInFlows_d + DeniedOutFlows_d),
+    TotalBytes = sum(InboundBytes_d + OutboundBytes_d)
+    by SrcIP_s
+| extend TotalGB = round(TotalBytes / 1073741824, 3)  // Convert to GB
+| sort by TotalBytes desc
+| take 20
+| project SourceIP = SrcIP_s, TotalFlows, TotalGB
+
+// -----------------------------------------------------------------------------
+// QUERY 3: Cross-Subscription Traffic Detection
+// -----------------------------------------------------------------------------
+// WHY: In enterprise environments, cross-subscription traffic may
+// violate network segmentation policies. This query helps enforce
+// subscription-level boundaries for compliance.
+// -----------------------------------------------------------------------------
+NTANetAnalytics
+| where TimeGenerated > ago(24h)
+| where SubType == "FlowLog"
+| where FlowType !in ("AzurePublic", "ExternalPublic", "Unknown", "UnknownPrivate")
+| where SrcSubscription != DestSubscription  // Cross-subscription
+| extend
+    SrcVNet = iff(isnotempty(SrcSubnet),
+        strcat("/subscriptions/", SrcSubscription, "/resourceGroups/",
+               tostring(split(SrcSubnet, "/")[0]),
+               "/providers/Microsoft.Network/virtualNetworks/",
+               tostring(split(SrcSubnet, "/")[1])), ""),
+    DestVNet = iff(isnotempty(DestSubnet),
+        strcat("/subscriptions/", DestSubscription, "/resourceGroups/",
+               tostring(split(DestSubnet, "/")[0]),
+               "/providers/Microsoft.Network/virtualNetworks/",
+               tostring(split(DestSubnet, "/")[1])), "")
+| summarize Flows = sum(CompletedFlows) by SrcVNet, DestVNet, SrcSubscription, DestSubscription
+| sort by Flows desc
+
+// -----------------------------------------------------------------------------
+// QUERY 4: Traffic by Port and Protocol
+// -----------------------------------------------------------------------------
+// WHY: Understanding traffic distribution by port helps identify
+// unexpected services, potential threats (unusual ports), and
+// helps with firewall rule optimization.
+// -----------------------------------------------------------------------------
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where SubType_s == "FlowLog"
+| summarize
+    TotalFlows = sum(AllowedInFlows_d + AllowedOutFlows_d),
+    TotalBytes = sum(InboundBytes_d + OutboundBytes_d)
+    by DestPort_d, L4Protocol_s
+| extend
+    Protocol = case(
+        L4Protocol_s == "T", "TCP",
+        L4Protocol_s == "U", "UDP",
+        L4Protocol_s
+    ),
+    TotalGB = round(TotalBytes / 1073741824, 3)
+| sort by TotalFlows desc
+| take 20
+| project Port = toint(DestPort_d), Protocol, TotalFlows, TotalGB
+
+// -----------------------------------------------------------------------------
+// QUERY 5: Internet-Bound Traffic Analysis
+// -----------------------------------------------------------------------------
+// WHY: Monitoring egress to internet helps identify data exfiltration
+// attempts, unauthorized external communications, and validates
+// that expected internet traffic patterns are normal.
+// -----------------------------------------------------------------------------
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where SubType_s == "FlowLog"
+| where FlowType_s == "ExternalPublic"  // Traffic to/from public internet
+| where FlowDirection_s == "O"  // Outbound
+| summarize
+    TotalFlows = count(),
+    TotalBytesOut = sum(OutboundBytes_d)
+    by SrcIP_s, NSGList_s
+| extend TotalGBOut = round(TotalBytesOut / 1073741824, 3)
+| sort by TotalBytesOut desc
+| take 20
+| project SourceIP = SrcIP_s, NSG = NSGList_s, TotalFlows, TotalGBOut
+
+// -----------------------------------------------------------------------------
+// QUERY 6: Malicious IP Detection
+// -----------------------------------------------------------------------------
+// WHY: Traffic Analytics enriches flow data with threat intelligence.
+// Detecting communication with known malicious IPs enables rapid
+// incident response and containment.
+// -----------------------------------------------------------------------------
+NTAIpDetails
+| where TimeGenerated > ago(7d)
+| where FlowType == "MaliciousFlow"
+| project
+    TimeGenerated,
+    MaliciousIP = Ip,
+    ThreatType,
+    ThreatDescription,
+    DnsDomain,
+    Location,
+    Url
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 7: Risky Region Traffic Detection
+// -----------------------------------------------------------------------------
+// WHY: Traffic from certain geographic regions may indicate targeted
+// attacks or policy violations. This query identifies traffic from
+// specified countries for security review.
+// -----------------------------------------------------------------------------
+let RiskyCountries = dynamic(["Country1", "Country2"]);  // Replace with actual countries
+NTAIpDetails
+| where TimeGenerated > ago(24h)
+| where Location in (RiskyCountries)
+| where FlowType in ("MaliciousFlow", "ExternalPublic")
+| project
+    TimeGenerated,
+    Ip,
+    FlowType,
+    ThreatType,
+    DnsDomain,
+    ThreatDescription,
+    Location,
+    PublicIpDetails,
+    Url
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 8: NSG Rule Hit Count Analysis
+// -----------------------------------------------------------------------------
+// WHY: Understanding which NSG rules are frequently hit helps
+// validate rule effectiveness and identify rules that may be
+// candidates for removal or optimization.
+// -----------------------------------------------------------------------------
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(7d)
+| where SubType_s == "FlowLog"
+| summarize
+    AllowedFlows = sum(AllowedInFlows_d + AllowedOutFlows_d),
+    DeniedFlows = sum(DeniedInFlows_d + DeniedOutFlows_d)
+    by NSGList_s, NSGRule_s
+| extend TotalFlows = AllowedFlows + DeniedFlows
+| sort by TotalFlows desc
+| project NSG = NSGList_s, Rule = NSGRule_s, AllowedFlows, DeniedFlows, TotalFlows
+
+// -----------------------------------------------------------------------------
+// QUERY 9: VM-to-VM Communication Patterns
+// -----------------------------------------------------------------------------
+// WHY: Understanding internal communication patterns helps with
+// microsegmentation design, security policy creation, and identifying
+// unexpected lateral movement.
+// -----------------------------------------------------------------------------
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where SubType_s == "FlowLog"
+| where FlowType_s == "IntraVNet" or FlowType_s == "InterVNet"
+| where isnotempty(SrcVM_s) and isnotempty(DestVM_s)
+| summarize
+    FlowCount = count(),
+    TotalBytes = sum(InboundBytes_d + OutboundBytes_d)
+    by SrcVM_s, DestVM_s, DestPort_d
+| extend TotalMB = round(TotalBytes / 1048576, 2)
+| sort by FlowCount desc
+| take 50
+| project SourceVM = SrcVM_s, DestVM = DestVM_s, Port = toint(DestPort_d), FlowCount, TotalMB
+
+// -----------------------------------------------------------------------------
+// QUERY 10: DDoS Mitigation Flow Logs
+// -----------------------------------------------------------------------------
+// WHY: When Azure DDoS Protection is triggered, these logs show
+// which traffic was mitigated (dropped vs forwarded). Essential
+// for understanding attack patterns and validating protection.
+// -----------------------------------------------------------------------------
+AzureDiagnostics
+| where TimeGenerated > ago(7d)
+| where Category == "DDoSMitigationFlowLogs"
+| project
+    TimeGenerated,
+    sourcePublicIpAddress_s,
+    destPublicIpAddress_s,
+    destPort_s,
+    protocol_s,
+    totalPacketsForwarded_d,
+    totalPacketsDropped_d
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 11: Application Gateway Access Logs
+// -----------------------------------------------------------------------------
+// WHY: Application Gateway logs provide Layer 7 visibility including
+// HTTP methods, URLs, and response codes. Essential for web
+// application monitoring and security analysis.
+// -----------------------------------------------------------------------------
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceType == "APPLICATIONGATEWAYS"
+| where OperationName == "ApplicationGatewayAccess"
+| summarize
+    RequestCount = count()
+    by httpStatus_d, requestUri_s, httpMethod_s
+| sort by RequestCount desc
+| take 50
+| project
+    HttpStatus = toint(httpStatus_d),
+    Method = httpMethod_s,
+    URI = requestUri_s,
+    RequestCount
+
+// -----------------------------------------------------------------------------
+// QUERY 12: Failed Requests Through Application Gateway
+// -----------------------------------------------------------------------------
+// WHY: HTTP 4xx and 5xx errors indicate client or server issues.
+// Monitoring error patterns helps identify application problems,
+// attacks, or misconfigurations.
+// -----------------------------------------------------------------------------
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceType == "APPLICATIONGATEWAYS"
+| where OperationName == "ApplicationGatewayAccess"
+| where httpStatus_d >= 400
+| summarize ErrorCount = count() by bin(TimeGenerated, 1h), _ResourceId
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 13: WAF (Web Application Firewall) Blocked Requests
+// -----------------------------------------------------------------------------
+// WHY: WAF logs show blocked attack attempts including SQL injection,
+// XSS, and other OWASP threats. Analysis helps understand attack
+// patterns and validate WAF rule effectiveness.
+// -----------------------------------------------------------------------------
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.NETWORK"
+| where Category == "ApplicationGatewayFirewallLog"
+| where action_s == "Blocked"
+| summarize
+    BlockedRequests = count()
+    by ruleId_s, ruleGroup_s, Message
+| sort by BlockedRequests desc
+| take 20
+
+// -----------------------------------------------------------------------------
+// QUERY 14: ExpressRoute Circuit Monitoring
+// -----------------------------------------------------------------------------
+// WHY: ExpressRoute provides private connectivity to Azure. Monitoring
+// BGP routes and availability ensures connectivity to on-premises
+// resources remains stable.
+// -----------------------------------------------------------------------------
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceType == "EXPRESSROUTECIRCUITS"
+| project
+    TimeGenerated,
+    ResourceType,
+    network_s,
+    path_s,
+    OperationName
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 15: VPN Gateway Connection Health
+// -----------------------------------------------------------------------------
+// WHY: VPN Gateway diagnostics help troubleshoot site-to-site and
+// point-to-site connectivity issues. Connection drops impact
+// hybrid connectivity and user access.
+// -----------------------------------------------------------------------------
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceType == "VPNGATEWAYS" or Category == "TunnelDiagnosticLog"
+| where OperationName == "VpnTunnelConnected" or OperationName == "VpnTunnelDisconnected"
+| project
+    TimeGenerated,
+    OperationName,
+    Resource,
+    remoteIP_s,
+    stateChangeReason_s
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 16: Network Flow Deviation Analysis
+// -----------------------------------------------------------------------------
+// WHY: Statistical deviation analysis identifies IPs with abnormal
+// traffic patterns. Large deviations may indicate compromised hosts
+// or configuration changes requiring investigation.
+// -----------------------------------------------------------------------------
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(7d)
+| where SubType_s == "FlowLog"
+| mvexpand IP = pack_array(SrcIP_s, DestIP_s) to typeof(string)
+| where isnotempty(IP)
+| extend traffic = AllowedInFlows_d + DeniedInFlows_d + AllowedOutFlows_d + DeniedOutFlows_d
+| summarize
+    TotalTraffic = sum(traffic),
+    AvgTraffic = avg(traffic),
+    Deviation = stdev(traffic)
+    by IP
+| where Deviation > 1000  // High deviation threshold
+| sort by Deviation desc
+| take 20
+
+// =============================================================================
+// END OF FILE
+// =============================================================================

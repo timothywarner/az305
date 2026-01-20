@@ -1,0 +1,300 @@
+// =============================================================================
+// FILE: security-audit.kql
+// SYNOPSIS: Security audit queries for Azure Monitor Log Analytics
+// DESCRIPTION:
+//   Collection of KQL queries for security monitoring and auditing:
+//   - Failed login attempts and suspicious sign-in patterns
+//   - Privilege escalation detection
+//   - RBAC role assignment changes
+//   - Resource access anomalies
+//   - Security recommendations tracking
+//
+// AZ-305 EXAM OBJECTIVES:
+//   - Design identity, governance, and monitoring solutions
+//   - Monitor security posture with Azure Monitor and Sentinel
+//   - Implement audit logging and security analytics
+//   - Design for threat detection and response
+//
+// PREREQUISITES:
+//   - Log Analytics Workspace with connected data sources
+//   - Azure AD sign-in logs (requires P1/P2 license)
+//   - Azure Activity logs configured
+//   - Appropriate RBAC permissions to query logs
+//
+// TABLES USED:
+//   - SigninLogs: Azure AD sign-in events
+//   - AuditLogs: Azure AD audit events
+//   - AzureActivity: Azure resource activity logs
+//   - SecurityAlert: Microsoft Defender alerts
+//   - AADUserRiskEvents: User risk detection events
+//
+// REFERENCES:
+//   - https://learn.microsoft.com/azure/azure-monitor/logs/log-analytics-tutorial
+//   - https://learn.microsoft.com/azure/active-directory/reports-monitoring/concept-sign-ins
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// QUERY 1: Failed Sign-in Attempts Summary
+// -----------------------------------------------------------------------------
+// WHY: Identifies applications and users with high failure rates
+// which may indicate brute force attacks, credential stuffing, or
+// misconfigured applications. Early detection enables rapid response.
+// -----------------------------------------------------------------------------
+SigninLogs
+| where TimeGenerated > ago(7d)
+| summarize
+    Attempts = count(),
+    Failed = countif(ResultType != 0),
+    Succeeded = countif(ResultType == 0)
+    by AppDisplayName
+| extend FailureRate = round(100.0 * Failed / Attempts, 2)
+| where Failed > 10  // Filter for applications with meaningful failure counts
+| top 10 by Failed
+| project AppDisplayName, Attempts, Failed, Succeeded, FailureRate
+| sort by Failed desc
+
+// -----------------------------------------------------------------------------
+// QUERY 2: Suspicious Sign-in Patterns - Impossible Travel
+// -----------------------------------------------------------------------------
+// WHY: Detects potential account compromise by identifying sign-ins
+// from geographically distant locations within short time windows.
+// This is a key indicator of credential theft or token replay attacks.
+// -----------------------------------------------------------------------------
+let TimeWindow = 7d;
+SigninLogs
+| where TimeGenerated > ago(TimeWindow)
+| where ResultType == 0  // Successful sign-ins only
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    IPAddress,
+    Location,
+    City = tostring(LocationDetails.city),
+    Country = tostring(LocationDetails.countryOrRegion)
+| sort by UserPrincipalName, TimeGenerated asc
+| serialize  // Required for prev() function
+| extend PrevTime = prev(TimeGenerated, 1)
+| extend PrevLocation = prev(Country, 1)
+| extend PrevUser = prev(UserPrincipalName, 1)
+| where UserPrincipalName == PrevUser  // Same user
+| where Country != PrevLocation  // Different country
+| extend TimeDiffMinutes = datetime_diff('minute', TimeGenerated, PrevTime)
+| where TimeDiffMinutes < 60  // Less than 1 hour between sign-ins
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    CurrentCountry = Country,
+    PreviousCountry = PrevLocation,
+    TimeDiffMinutes,
+    IPAddress
+
+// -----------------------------------------------------------------------------
+// QUERY 3: Failed Logins by User with Account Lockout Detection
+// -----------------------------------------------------------------------------
+// WHY: Monitors for accounts experiencing multiple failed logins,
+// which may indicate targeted attacks or users needing password assistance.
+// Error code 0xc0000234 specifically indicates account lockout.
+// -----------------------------------------------------------------------------
+SigninLogs
+| where TimeGenerated > ago(24h)
+| where ResultType != 0  // Failed attempts only
+| summarize
+    FailedAttempts = count(),
+    UniqueIPs = dcount(IPAddress),
+    LastAttempt = max(TimeGenerated),
+    ErrorCodes = make_set(ResultType)
+    by UserPrincipalName
+| where FailedAttempts > 5
+| extend IsLikelyAttack = iff(UniqueIPs > 3 and FailedAttempts > 10, "High Risk",
+                           iff(UniqueIPs > 1, "Medium Risk", "Low Risk"))
+| sort by FailedAttempts desc
+| project UserPrincipalName, FailedAttempts, UniqueIPs, IsLikelyAttack, LastAttempt, ErrorCodes
+
+// -----------------------------------------------------------------------------
+// QUERY 4: Privilege Escalation Detection
+// -----------------------------------------------------------------------------
+// WHY: Monitors for sensitive operations like adding service principals
+// or managing certificates/secrets, which attackers use for persistence.
+// Correlating with sign-in events provides context about the actor.
+// -----------------------------------------------------------------------------
+let LookbackDays = 7d;
+AuditLogs
+| where TimeGenerated > ago(LookbackDays)
+| where OperationName has_any (
+    "Add service principal",
+    "Certificates and secrets management",
+    "Add owner to application",
+    "Add app role assignment to service principal",
+    "Add delegated permission grant",
+    "Consent to application"
+)
+| extend Actor = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)
+| extend ActorIP = tostring(parse_json(tostring(InitiatedBy.user)).ipAddress)
+| extend TargetResource = tostring(TargetResources[0].displayName)
+| project
+    TimeGenerated,
+    Actor,
+    ActorIP,
+    OperationName,
+    TargetResource,
+    Result,
+    CorrelationId
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 5: RBAC Role Assignment Changes
+// -----------------------------------------------------------------------------
+// WHY: Role assignments grant permissions to Azure resources. Unauthorized
+// changes could enable data exfiltration or resource manipulation.
+// Monitoring subscription-level assignments is especially critical.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where Authorization contains "Microsoft.Authorization/roleAssignments"
+| where ActivityStatusValue in ("Started", "Succeeded", "Failed")
+| extend Properties_d = todynamic(Properties)
+| extend
+    RoleDefinitionId = extractjson("$.Properties.RoleDefinitionId", tostring(Properties_d.requestbody), typeof(string)),
+    PrincipalId = extractjson("$.Properties.PrincipalId", tostring(Properties_d.requestbody), typeof(string)),
+    Scope = extractjson("$.Properties.Scope", tostring(Properties_d.requestbody), typeof(string))
+| extend RoleId = split(RoleDefinitionId, '/')[-1]
+| extend RoleName = case(
+    RoleId =~ 'b24988ac-6180-42a0-ab88-20f7382dd24c', "Contributor",
+    RoleId =~ '8e3af657-a8ff-443c-a75c-2fe8c4bcb635', "Owner",
+    RoleId =~ '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9', "User Access Administrator",
+    RoleId =~ 'acdd72a7-3385-48ef-bd42-f606fba81ae7', "Reader",
+    "Other"
+)
+| project
+    TimeGenerated,
+    Caller,
+    OperationName,
+    ActivityStatusValue,
+    RoleName,
+    Scope,
+    PrincipalId,
+    SubscriptionId
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 6: User Risk Events from Identity Protection
+// -----------------------------------------------------------------------------
+// WHY: Azure AD Identity Protection detects risky user behaviors.
+// Unfamiliar locations combined with anomalous patterns often indicate
+// compromised accounts requiring immediate investigation.
+// -----------------------------------------------------------------------------
+AADUserRiskEvents
+| where TimeGenerated > ago(7d)
+| where RiskEventType contains "unfamiliar" or RiskEventType contains "anomalous"
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    RiskEventType,
+    RiskLevel,
+    RiskState,
+    IpAddress,
+    Location,
+    DetectionTimingType
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 7: Daily Security Review Summary
+// -----------------------------------------------------------------------------
+// WHY: Provides a consolidated view of security events for daily review.
+// Combines authentication failures, administrative activities, and
+// security alerts into a single dashboard-ready query.
+// -----------------------------------------------------------------------------
+let StartTime = ago(1d);
+let EndTime = now();
+
+// Failed authentication summary
+let AuthFailures = SigninLogs
+| where TimeGenerated between(StartTime .. EndTime)
+| where ResultType != 0
+| summarize FailedAttempts = count() by UserPrincipalName, IPAddress
+| top 10 by FailedAttempts;
+
+// Administrative activities
+let AdminActivities = AzureActivity
+| where TimeGenerated between(StartTime .. EndTime)
+| where CategoryValue == "Administrative"
+| where OperationNameValue has_any ("WRITE", "DELETE", "ACTION")
+| summarize Operations = count() by Caller, OperationNameValue
+| top 10 by Operations;
+
+// Output combined view
+AuthFailures
+| extend Category = "Authentication Failures"
+| project Category, Identity = UserPrincipalName, Details = IPAddress, Count = FailedAttempts
+
+// -----------------------------------------------------------------------------
+// QUERY 8: Security Alert Correlation
+// -----------------------------------------------------------------------------
+// WHY: Correlates security alerts with sign-in activities to build
+// a complete picture of potential incidents. Understanding the
+// context around alerts improves investigation efficiency.
+// -----------------------------------------------------------------------------
+SecurityAlert
+| where TimeGenerated > ago(7d)
+| where AlertSeverity in ("High", "Medium")
+| extend Entities = parse_json(Entities)
+| mv-expand Entity = Entities
+| where Entity.Type == "account"
+| extend AccountName = tostring(Entity.Name)
+| join kind=leftouter (
+    SigninLogs
+    | where TimeGenerated > ago(7d)
+    | project UserPrincipalName, IPAddress, AppDisplayName, SignInTime = TimeGenerated
+) on $left.AccountName == $right.UserPrincipalName
+| project
+    AlertTime = TimeGenerated,
+    AlertName,
+    AlertSeverity,
+    AccountName,
+    RecentSignInIP = IPAddress,
+    RecentApp = AppDisplayName,
+    SignInTime
+| sort by AlertTime desc
+
+// -----------------------------------------------------------------------------
+// QUERY 9: Multi-Factor Authentication Gap Analysis
+// -----------------------------------------------------------------------------
+// WHY: Identifies users who successfully signed in without MFA.
+// MFA is a critical security control, and gaps should be addressed
+// through Conditional Access policies.
+// -----------------------------------------------------------------------------
+SigninLogs
+| where TimeGenerated > ago(7d)
+| where ResultType == 0  // Successful sign-ins
+| where AuthenticationRequirement == "singleFactorAuthentication"
+| summarize
+    SignInsWithoutMFA = count(),
+    Apps = make_set(AppDisplayName),
+    Locations = make_set(tostring(LocationDetails.countryOrRegion))
+    by UserPrincipalName
+| where SignInsWithoutMFA > 5
+| sort by SignInsWithoutMFA desc
+
+// -----------------------------------------------------------------------------
+// QUERY 10: Anomaly Detection - Disabled Account Sign-in Attempts
+// -----------------------------------------------------------------------------
+// WHY: Sign-in attempts to disabled accounts may indicate attackers
+// testing harvested credentials. Error code 50057 indicates a
+// disabled account. Time series analysis helps detect patterns.
+// -----------------------------------------------------------------------------
+let LookBackPeriod = 7d;
+let DisabledAccountSignIns = SigninLogs
+| where TimeGenerated > ago(LookBackPeriod)
+| where ResultType == "50057"
+| where ResultDescription has "account is disabled";
+
+DisabledAccountSignIns
+| make-series Attempts = count() default = 0
+    on TimeGenerated
+    in range(startofday(ago(LookBackPeriod)), now(), 1h)
+| extend (anomalies, score) = series_decompose_anomalies(Attempts)
+| project TimeGenerated, Attempts, anomalies, score
+
+// =============================================================================
+// END OF FILE
+// =============================================================================

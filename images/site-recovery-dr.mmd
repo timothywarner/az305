@@ -1,0 +1,156 @@
+%% AZ-305 Domain 3: Azure Site Recovery DR Topology
+%% Reference: Azure Site Recovery architecture, disaster recovery
+%% Exam Focus: Replication, failover, recovery plans, RTO/RPO
+
+flowchart TB
+    subgraph SOURCE["Source Environment"]
+        direction TB
+
+        subgraph AZURE_SOURCE["Azure VMs (Source Region - East US)"]
+            AZURE_VM1["Production VM 1<br/>Web Tier"]
+            AZURE_VM2["Production VM 2<br/>App Tier"]
+            AZURE_VM3["Production VM 3<br/>Data Tier"]
+
+            SOURCE_VNET["Source VNet<br/>10.0.0.0/16"]
+            SOURCE_NSG["Network Security<br/>Groups"]
+            SOURCE_DISK["Managed Disks<br/>Premium SSD"]
+        end
+
+        subgraph ONPREM_SOURCE["On-Premises (VMware/Hyper-V)"]
+            ONPREM_VM1["VMware VM 1"]
+            ONPREM_VM2["VMware VM 2"]
+            HYPER_V["Hyper-V VMs"]
+
+            CONFIG_SERVER["Configuration Server<br/>Process Server<br/>Master Target"]
+            PROVIDER["Site Recovery Provider<br/>+ Recovery Services Agent"]
+        end
+
+        subgraph PHYSICAL_SOURCE["Physical Servers"]
+            PHYS_WIN["Windows Server"]
+            PHYS_LINUX["Linux Server"]
+
+            MOBILITY_SVC["Mobility Service<br/>Agent"]
+        end
+    end
+
+    subgraph REPLICATION["Replication Infrastructure"]
+        direction TB
+
+        RSV_ASR["Recovery Services Vault<br/>Site Recovery Configuration"]
+
+        CACHE_STORAGE["Cache Storage Account<br/>Source Region<br/>Temporary Replication Data"]
+
+        subgraph REPLICATION_POLICY["Replication Policy"]
+            RPO_SETTING["RPO Threshold<br/>Default: 15 minutes"]
+            RETENTION["Recovery Point Retention<br/>Default: 24 hours"]
+            APP_CONSISTENT["App-Consistent Snapshots<br/>Frequency: 4 hours"]
+            CRASH_CONSISTENT["Crash-Consistent Points<br/>Every 5 minutes"]
+        end
+
+        REPLICATION_FLOW["Continuous Replication<br/>Delta Changes<br/>Compressed & Encrypted"]
+    end
+
+    subgraph TARGET["Target Environment (DR Region - West US)"]
+        direction TB
+
+        subgraph AZURE_TARGET["Azure Target Resources"]
+            TARGET_RG["Target Resource Group<br/>Auto-created with -asr suffix"]
+            TARGET_VNET["Target VNet<br/>10.1.0.0/16"]
+            TARGET_NSG["Replicated NSG Rules"]
+            TARGET_STORAGE["Replica Managed Disks<br/>Target Storage Account"]
+        end
+
+        subgraph REPLICA_VMS["Replica VMs (Created on Failover)"]
+            REPLICA_VM1["Replica VM 1<br/>Web Tier"]
+            REPLICA_VM2["Replica VM 2<br/>App Tier"]
+            REPLICA_VM3["Replica VM 3<br/>Data Tier"]
+        end
+
+        NETWORK_MAPPING["Network Mapping<br/>Source VNet -> Target VNet"]
+    end
+
+    subgraph FAILOVER["Failover & Recovery"]
+        direction TB
+
+        subgraph FAILOVER_TYPES["Failover Types"]
+            TEST_FAILOVER["Test Failover<br/>Non-disruptive<br/>Isolated network"]
+            PLANNED_FAILOVER["Planned Failover<br/>Zero data loss<br/>Maintenance window"]
+            UNPLANNED_FAILOVER["Unplanned Failover<br/>Disaster scenario<br/>Potential data loss"]
+        end
+
+        RECOVERY_PLAN["Recovery Plan<br/>Ordered VM startup<br/>Pre/Post scripts<br/>Manual actions"]
+
+        subgraph POST_FAILOVER["Post-Failover Actions"]
+            COMMIT["Commit<br/>Delete recovery points<br/>Finalize failover"]
+            REPROTECT["Reprotect<br/>Reverse replication<br/>New source -> old source"]
+            FAILBACK["Failback<br/>Return to primary<br/>After remediation"]
+        end
+    end
+
+    subgraph MONITORING["Monitoring & Alerts"]
+        ASR_DASHBOARD["Site Recovery Dashboard<br/>Replication Health<br/>RPO Status"]
+        ASR_ALERTS["Recovery Alerts<br/>Replication issues<br/>RPO breaches"]
+        JOBS["Recovery Jobs<br/>Enable/Disable<br/>Failover status"]
+    end
+
+    %% Replication flows
+    AZURE_VM1 --> CACHE_STORAGE
+    AZURE_VM2 --> CACHE_STORAGE
+    AZURE_VM3 --> CACHE_STORAGE
+    CACHE_STORAGE --> TARGET_STORAGE
+
+    ONPREM_VM1 --> CONFIG_SERVER
+    ONPREM_VM2 --> CONFIG_SERVER
+    CONFIG_SERVER --> RSV_ASR
+    RSV_ASR --> TARGET_STORAGE
+
+    PHYS_WIN --> MOBILITY_SVC
+    PHYS_LINUX --> MOBILITY_SVC
+    MOBILITY_SVC --> RSV_ASR
+
+    %% Target provisioning
+    RSV_ASR --> TARGET_RG
+    TARGET_RG --> TARGET_VNET
+    TARGET_RG --> TARGET_NSG
+    TARGET_STORAGE --> REPLICA_VMS
+
+    %% Failover flow
+    RSV_ASR --> FAILOVER_TYPES
+    FAILOVER_TYPES --> RECOVERY_PLAN
+    RECOVERY_PLAN --> POST_FAILOVER
+
+    %% Monitoring
+    RSV_ASR --> ASR_DASHBOARD
+    ASR_DASHBOARD --> ASR_ALERTS
+    ASR_DASHBOARD --> JOBS
+
+    %% Exam notes
+    NOTE1["**EXAM TIP**: Test failover uses<br/>isolated network - no impact<br/>to production replication"]
+    NOTE2["**EXAM TIP**: Recovery plans enable<br/>ordered failover with scripts<br/>for multi-tier applications"]
+    NOTE3["**EXAM TIP**: RPO depends on<br/>replication frequency and<br/>network bandwidth"]
+    NOTE4["**EXAM TIP**: Failback requires<br/>reprotection first to<br/>establish reverse replication"]
+
+    %% Styling
+    classDef sourceStyle fill:#42a5f5,stroke:#1976d2,color:#fff
+    classDef onpremStyle fill:#ab47bc,stroke:#7b1fa2,color:#fff
+    classDef physicalStyle fill:#78909c,stroke:#455a64,color:#fff
+    classDef replicationStyle fill:#ffca28,stroke:#ff8f00,color:#000
+    classDef policyStyle fill:#26c6da,stroke:#00838f,color:#000
+    classDef targetStyle fill:#66bb6a,stroke:#388e3c,color:#fff
+    classDef replicaStyle fill:#81c784,stroke:#388e3c,color:#000
+    classDef failoverStyle fill:#7e57c2,stroke:#512da8,color:#fff
+    classDef postStyle fill:#ef5350,stroke:#c62828,color:#fff
+    classDef monitorStyle fill:#90a4ae,stroke:#546e7a,color:#fff
+    classDef noteStyle fill:#fff9c4,stroke:#fbc02d,color:#000,stroke-dasharray: 5 5
+
+    class AZURE_VM1,AZURE_VM2,AZURE_VM3,SOURCE_VNET,SOURCE_NSG,SOURCE_DISK sourceStyle
+    class ONPREM_VM1,ONPREM_VM2,HYPER_V,CONFIG_SERVER,PROVIDER onpremStyle
+    class PHYS_WIN,PHYS_LINUX,MOBILITY_SVC physicalStyle
+    class RSV_ASR,CACHE_STORAGE,REPLICATION_FLOW replicationStyle
+    class RPO_SETTING,RETENTION,APP_CONSISTENT,CRASH_CONSISTENT policyStyle
+    class TARGET_RG,TARGET_VNET,TARGET_NSG,TARGET_STORAGE,NETWORK_MAPPING targetStyle
+    class REPLICA_VM1,REPLICA_VM2,REPLICA_VM3 replicaStyle
+    class TEST_FAILOVER,PLANNED_FAILOVER,UNPLANNED_FAILOVER,RECOVERY_PLAN failoverStyle
+    class COMMIT,REPROTECT,FAILBACK postStyle
+    class ASR_DASHBOARD,ASR_ALERTS,JOBS monitorStyle
+    class NOTE1,NOTE2,NOTE3,NOTE4 noteStyle

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "keyVaultName": {
+      "value": "contoso-app"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "skuName": {
+      "value": "standard"
+    },
+    "enableRbacAuthorization": {
+      "value": true
+    },
+    "enableSoftDelete": {
+      "value": true
+    },
+    "softDeleteRetentionInDays": {
+      "value": 90
+    },
+    "enablePurgeProtection": {
+      "value": true
+    },
+    "enablePublicNetworkAccess": {
+      "value": false
+    },
+    "vnetId": {
+      "value": ""
+    },
+    "privateEndpointSubnetName": {
+      "value": "PrivateEndpoints"
+    },
+    "privateDnsZoneId": {
+      "value": ""
+    },
+    "deployPrivateEndpoint": {
+      "value": false
+    },
+    "keyVaultAdminPrincipalIds": {
+      "value": []
+    },
+    "keyVaultSecretsUserPrincipalIds": {
+      "value": []
+    },
+    "keyVaultCryptoUserPrincipalIds": {
+      "value": []
+    },
+    "enableDiagnostics": {
+      "value": false
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": ""
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "secrets-management",
+        "examObjective": "AZ-305-SecretsManagement"
+      }
+    }
+  }
+}

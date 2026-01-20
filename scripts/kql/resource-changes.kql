@@ -1,0 +1,455 @@
+// =============================================================================
+// FILE: resource-changes.kql
+// SYNOPSIS: Azure Activity Log queries for resource change tracking
+// DESCRIPTION:
+//   Collection of KQL queries for tracking resource changes:
+//   - Resource creation, modification, and deletion tracking
+//   - Configuration change detection
+//   - Compliance and audit trail analysis
+//   - Resource lifecycle monitoring
+//   - Change correlation and impact analysis
+//
+// AZ-305 EXAM OBJECTIVES:
+//   - Design governance solutions
+//   - Implement audit logging and change tracking
+//   - Monitor resource compliance
+//   - Design for operational visibility
+//
+// PREREQUISITES:
+//   - Activity Log exported to Log Analytics Workspace
+//   - Azure Resource Graph access (for some queries)
+//   - Appropriate RBAC permissions for querying logs
+//
+// TABLES USED:
+//   - AzureActivity: Azure Activity Log events
+//   - AuditLogs: Azure AD audit events
+//   - resourcechanges: Azure Resource Graph change data
+//
+// REFERENCES:
+//   - https://learn.microsoft.com/azure/azure-monitor/essentials/activity-log
+//   - https://learn.microsoft.com/azure/governance/resource-graph/changes/get-resource-changes
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// QUERY 1: Recent Resource Changes Summary
+// -----------------------------------------------------------------------------
+// WHY: Provides a high-level view of recent administrative activity.
+// Understanding change velocity helps identify unusual activity
+// patterns that may require investigation.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded"
+| summarize
+    Operations = count()
+    by bin(TimeGenerated, 1h)
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 2: Resource Creation Events
+// -----------------------------------------------------------------------------
+// WHY: Tracking resource creation helps manage costs, ensure compliance
+// with policies, and detect unauthorized provisioning. Essential for
+// governance and capacity planning.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where CategoryValue == "Administrative"
+| where OperationNameValue endswith "/write"
+| where ActivityStatusValue == "Succeeded"
+| parse _ResourceId with "/subscriptions/" SubscriptionId "/resourceGroups/" ResourceGroup "/providers/" ResourceProvider "/" ResourceType "/" ResourceName
+| where isnotempty(ResourceName)  // Filter to actual resource creations
+| project
+    TimeGenerated,
+    Caller,
+    ResourceGroup,
+    ResourceType = strcat(ResourceProvider, "/", ResourceType),
+    ResourceName,
+    SubscriptionId
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 3: Resource Deletion Events
+// -----------------------------------------------------------------------------
+// WHY: Tracking deletions is critical for audit trails and recovering
+// from accidental deletions. Unauthorized deletions may indicate
+// security incidents or insider threats.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where CategoryValue == "Administrative"
+| where OperationNameValue endswith "/delete"
+| where ActivityStatusValue == "Succeeded"
+| parse _ResourceId with "/subscriptions/" SubscriptionId "/resourceGroups/" ResourceGroup "/providers/" ResourceProvider "/" ResourceType "/" ResourceName
+| project
+    TimeGenerated,
+    Caller,
+    ResourceGroup,
+    ResourceType = strcat(ResourceProvider, "/", ResourceType),
+    ResourceName,
+    CallerIpAddress,
+    CorrelationId
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 4: Failed Operations Analysis
+// -----------------------------------------------------------------------------
+// WHY: Failed operations may indicate permission issues, quota limits,
+// or configuration errors. Understanding failure patterns helps
+// improve operational processes and permissions.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Failed"
+| summarize
+    FailureCount = count()
+    by OperationNameValue, Caller
+| sort by FailureCount desc
+| take 20
+| project Operation = OperationNameValue, Caller, FailureCount
+
+// -----------------------------------------------------------------------------
+// QUERY 5: Changes by Resource Provider
+// -----------------------------------------------------------------------------
+// WHY: Understanding which services have the most changes helps focus
+// monitoring and governance efforts. High change rates in certain
+// providers may indicate active projects or automation.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded"
+| parse _ResourceId with "/subscriptions/" SubscriptionId "/resourceGroups/" ResourceGroup "/providers/" ResourceProvider "/" *
+| where isnotempty(ResourceProvider)
+| summarize
+    Operations = count(),
+    UniqueCallers = dcount(Caller),
+    UniqueResources = dcount(_ResourceId)
+    by ResourceProvider
+| sort by Operations desc
+| take 20
+
+// -----------------------------------------------------------------------------
+// QUERY 6: Activity by Caller Analysis
+// -----------------------------------------------------------------------------
+// WHY: Identifying who makes the most changes helps understand
+// operational patterns and validate that automation accounts are
+// behaving as expected. Unusual callers may warrant investigation.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded"
+| summarize
+    Operations = count(),
+    WriteOperations = countif(OperationNameValue contains "/write"),
+    DeleteOperations = countif(OperationNameValue contains "/delete"),
+    ActionOperations = countif(OperationNameValue contains "/action")
+    by Caller
+| sort by Operations desc
+| take 20
+
+// -----------------------------------------------------------------------------
+// QUERY 7: Policy Assignment Changes
+// -----------------------------------------------------------------------------
+// WHY: Policy changes can significantly impact resource compliance
+// and governance. Tracking these changes ensures policy modifications
+// go through proper change management processes.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where OperationNameValue has "Microsoft.Authorization/policyAssignments"
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    ActivityStatusValue,
+    _ResourceId,
+    Properties
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 8: Role Assignment Changes
+// -----------------------------------------------------------------------------
+// WHY: Role assignment changes grant or revoke access to resources.
+// Monitoring these changes is critical for security and compliance.
+// Unauthorized role changes may indicate account compromise.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where OperationNameValue has "Microsoft.Authorization/roleAssignments"
+| extend Properties_d = todynamic(Properties)
+| extend
+    PrincipalId = extractjson("$.Properties.PrincipalId", tostring(Properties_d.requestbody), typeof(string)),
+    RoleDefinitionId = extractjson("$.Properties.RoleDefinitionId", tostring(Properties_d.requestbody), typeof(string)),
+    Scope = extractjson("$.Properties.Scope", tostring(Properties_d.requestbody), typeof(string))
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    ActivityStatusValue,
+    PrincipalId,
+    RoleDefinitionId,
+    Scope
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 9: Resource Group Changes
+// -----------------------------------------------------------------------------
+// WHY: Resource group operations affect all contained resources.
+// Creating or deleting resource groups is a significant operation
+// that should be monitored closely.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where OperationNameValue has "Microsoft.Resources/subscriptions/resourceGroups"
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    ActivityStatusValue,
+    _ResourceId,
+    CallerIpAddress
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 10: Network Security Group Changes
+// -----------------------------------------------------------------------------
+// WHY: NSG changes directly impact network security. Unauthorized
+// rule additions could expose resources to attacks. All NSG
+// changes should be reviewed and validated.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where OperationNameValue has "Microsoft.Network/networkSecurityGroups"
+| where ActivityStatusValue == "Succeeded"
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    _ResourceId,
+    CallerIpAddress,
+    Properties
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 11: Changes Outside Business Hours
+// -----------------------------------------------------------------------------
+// WHY: Changes made outside normal business hours may indicate
+// unauthorized access or require additional scrutiny. Alerting on
+// off-hours changes enables faster incident detection.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded"
+| extend HourOfDay = hourofday(TimeGenerated)
+| extend DayOfWeek = dayofweek(TimeGenerated)
+| where (HourOfDay < 8 or HourOfDay > 18)  // Outside 8 AM - 6 PM
+    or DayOfWeek == 0d or DayOfWeek == 6d  // Weekend
+| project
+    TimeGenerated,
+    HourOfDay,
+    DayOfWeek,
+    Caller,
+    OperationNameValue,
+    _ResourceId
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 12: Diagnostic Settings Changes
+// -----------------------------------------------------------------------------
+// WHY: Disabling diagnostic settings could hide malicious activity.
+// Changes to logging configuration should be monitored and
+// validated to ensure continuous audit trail.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where OperationNameValue has "Microsoft.Insights/diagnosticSettings"
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    ActivityStatusValue,
+    _ResourceId,
+    Properties
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 13: Key Vault Changes
+// -----------------------------------------------------------------------------
+// WHY: Key Vault contains sensitive secrets, keys, and certificates.
+// Changes to vault configuration or access policies require
+// careful monitoring for security compliance.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where OperationNameValue has "Microsoft.KeyVault/vaults"
+| where ActivityStatusValue == "Succeeded"
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    _ResourceId,
+    CallerIpAddress
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 14: Storage Account Changes
+// -----------------------------------------------------------------------------
+// WHY: Storage account changes can expose data to unauthorized access.
+// Changes to public access settings, firewall rules, or encryption
+// should be monitored and validated.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where OperationNameValue has "Microsoft.Storage/storageAccounts"
+| where ActivityStatusValue == "Succeeded"
+| where OperationNameValue !has "/listKeys"  // Exclude key listing
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    _ResourceId,
+    CallerIpAddress
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 15: Resource Changes Correlation with Deployments
+// -----------------------------------------------------------------------------
+// WHY: Correlating changes with deployment activities helps understand
+// whether changes are from automated pipelines or manual actions.
+// Manual changes to production may violate change management policies.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded"
+| extend IsDeployment = iff(
+    OperationNameValue has "Microsoft.Resources/deployments" or
+    Caller has "pipeline" or
+    Caller has "devops" or
+    Caller has "spn-",
+    true, false)
+| summarize
+    DeploymentChanges = countif(IsDeployment),
+    ManualChanges = countif(not(IsDeployment))
+    by bin(TimeGenerated, 1d)
+| project
+    TimeGenerated,
+    DeploymentChanges,
+    ManualChanges,
+    ManualChangePercent = round(100.0 * ManualChanges / (DeploymentChanges + ManualChanges), 2)
+| render timechart
+
+// -----------------------------------------------------------------------------
+// QUERY 16: Virtual Machine State Changes
+// -----------------------------------------------------------------------------
+// WHY: Tracking VM start, stop, restart, and delete operations helps
+// understand operational patterns, troubleshoot availability issues,
+// and validate that shutdown policies are being followed.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where OperationNameValue has "Microsoft.Compute/virtualMachines"
+| where OperationNameValue has_any ("/start", "/deallocate", "/restart", "/powerOff", "/delete")
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    ActivityStatusValue,
+    _ResourceId
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 17: Subscription-Level Changes
+// -----------------------------------------------------------------------------
+// WHY: Subscription-level changes affect all resources in the
+// subscription. These high-impact changes require elevated
+// permissions and careful review.
+// -----------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(30d)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded"
+| where _ResourceId !has "/resourceGroups/"  // Subscription-level only
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    _ResourceId
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 18: Resource Change Timeline
+// -----------------------------------------------------------------------------
+// WHY: Creating a timeline of changes for a specific resource helps
+// with troubleshooting and understanding the evolution of resource
+// configuration over time.
+// -----------------------------------------------------------------------------
+let TargetResourceId = "/subscriptions/xxx/resourceGroups/xxx/providers/xxx";  // Replace with actual ID
+AzureActivity
+| where TimeGenerated > ago(90d)
+| where _ResourceId has TargetResourceId
+| where CategoryValue == "Administrative"
+| project
+    TimeGenerated,
+    Caller,
+    OperationNameValue,
+    ActivityStatusValue,
+    Properties
+| sort by TimeGenerated desc
+
+// -----------------------------------------------------------------------------
+// QUERY 19: Change Summary Dashboard
+// -----------------------------------------------------------------------------
+// WHY: Provides a consolidated view of change activity suitable
+// for governance dashboards. Helps leaders understand operational
+// activity and compliance posture.
+// -----------------------------------------------------------------------------
+let TimeRange = 24h;
+let Changes = AzureActivity
+| where TimeGenerated > ago(TimeRange)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue == "Succeeded";
+
+let Summary = Changes
+| summarize
+    TotalOperations = count(),
+    CreateOperations = countif(OperationNameValue contains "/write"),
+    DeleteOperations = countif(OperationNameValue contains "/delete"),
+    ActionOperations = countif(OperationNameValue contains "/action"),
+    UniqueCallers = dcount(Caller),
+    UniqueResources = dcount(_ResourceId);
+
+let TopCallers = Changes
+| summarize Operations = count() by Caller
+| top 5 by Operations
+| summarize TopCallersList = make_list(Caller);
+
+let TopResourceTypes = Changes
+| parse _ResourceId with "/subscriptions/" * "/resourceGroups/" * "/providers/" ResourceProvider "/" ResourceType "/" *
+| summarize Operations = count() by ResourceProvider
+| top 5 by Operations
+| summarize TopResourceTypesList = make_list(ResourceProvider);
+
+Summary
+| extend dummy = 1
+| join (TopCallers | extend dummy = 1) on dummy
+| join (TopResourceTypes | extend dummy = 1) on dummy
+| project-away dummy, dummy1, dummy2
+| project
+    TotalOperations,
+    CreateOperations,
+    DeleteOperations,
+    ActionOperations,
+    UniqueCallers,
+    UniqueResources,
+    TopCallersList,
+    TopResourceTypesList
+
+// =============================================================================
+// END OF FILE
+// =============================================================================

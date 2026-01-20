@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageAccountNamePrefix": {
+      "value": "contoso"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "storageSku": {
+      "value": "Standard_RAGZRS"
+    },
+    "storageKind": {
+      "value": "StorageV2"
+    },
+    "accessTier": {
+      "value": "Hot"
+    },
+    "enableHierarchicalNamespace": {
+      "value": false
+    },
+    "enableBlobVersioning": {
+      "value": true
+    },
+    "enableBlobSoftDelete": {
+      "value": true
+    },
+    "blobSoftDeleteRetentionDays": {
+      "value": 30
+    },
+    "enableContainerSoftDelete": {
+      "value": true
+    },
+    "containerSoftDeleteRetentionDays": {
+      "value": 30
+    },
+    "enablePointInTimeRestore": {
+      "value": true
+    },
+    "pointInTimeRestoreDays": {
+      "value": 7
+    },
+    "enableChangeFeed": {
+      "value": true
+    },
+    "daysToCoolTier": {
+      "value": 30
+    },
+    "daysToArchiveTier": {
+      "value": 90
+    },
+    "daysToDeleteBlob": {
+      "value": 365
+    },
+    "containerNames": {
+      "value": [
+        "data",
+        "backups",
+        "archives",
+        "logs"
+      ]
+    },
+    "tags": {
+      "value": {
+        "environment": "production",
+        "purpose": "storage",
+        "examObjective": "AZ-305-DataStorage"
+      }
+    }
+  }
+}
