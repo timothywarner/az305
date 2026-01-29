@@ -7,10 +7,10 @@ Use these URL patterns and search terms with the `microsoft-learn` MCP server to
 ### Identity
 | Topic | Search Terms | Base URL Pattern |
 |-------|-------------|-----------------|
-| Azure AD B2B/B2C | "Azure AD B2C overview", "external identities" | `learn.microsoft.com/en-us/azure/active-directory-b2c/` |
-| Conditional Access | "conditional access policies Azure AD" | `learn.microsoft.com/en-us/azure/active-directory/conditional-access/` |
+| Microsoft Entra ID B2B/B2C | "Microsoft Entra ID B2C overview", "external identities" | `learn.microsoft.com/en-us/azure/active-directory-b2c/` |
+| Conditional Access | "conditional access policies Microsoft Entra ID" | `learn.microsoft.com/en-us/azure/active-directory/conditional-access/` |
 | Managed Identities | "managed identities Azure resources" | `learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/` |
-| Azure AD Connect | "hybrid identity Azure AD Connect" | `learn.microsoft.com/en-us/azure/active-directory/hybrid/` |
+| Microsoft Entra ID Connect | "hybrid identity Microsoft Entra ID Connect" | `learn.microsoft.com/en-us/azure/active-directory/hybrid/` |
 | RBAC | "Azure RBAC built-in roles" | `learn.microsoft.com/en-us/azure/role-based-access-control/` |
 
 ### Governance

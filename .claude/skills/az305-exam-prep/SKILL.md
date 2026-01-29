@@ -23,7 +23,7 @@ Activate this skill when ANY of the following apply:
 ### MCP Call Examples
 ```
 # For an identity question:
-microsoft_docs_search("Azure AD B2C vs B2B external identities customer authentication")
+microsoft_docs_search("Microsoft Entra ID B2C vs B2B external identities customer authentication")
 microsoft_docs_fetch("https://learn.microsoft.com/en-us/azure/active-directory-b2c/overview")
 
 # For a networking question:

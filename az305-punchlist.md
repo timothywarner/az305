@@ -17,11 +17,11 @@
 ### Authentication & Authorization (1.2)
 - [ ] Microsoft Entra ID auth methods: MFA, passwordless (FIDO2, Authenticator)
 - [ ] Conditional Access policies
-- [ ] B2B vs B2C decision: partners vs consumers
-- [ ] Hybrid identity: Entra Connect, pass-through auth vs password hash sync
-- [ ] Entra Application Proxy for on-prem app access
+- [ ] Microsoft Entra External ID: B2B (partners) vs B2C (consumers)
+- [ ] Hybrid identity: Microsoft Entra Connect, pass-through auth vs password hash sync
+- [ ] Microsoft Entra Application Proxy for on-prem app access
 - [ ] RBAC: built-in vs custom roles, scope inheritance
-- [ ] Privileged Identity Management (PIM): just-in-time elevation
+- [ ] Microsoft Entra Privileged Identity Management (PIM): just-in-time elevation
 - [ ] Key Vault: Standard vs Premium, RBAC mode, managed identity access, rotation
 
 ### Governance (1.3)

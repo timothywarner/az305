@@ -93,7 +93,7 @@ Your responsibilities include advising stakeholders and translating business req
 **Module:** [Design authentication and authorization solutions](https://learn.microsoft.com/training/modules/design-authentication-authorization-solutions/)
 
 - [ ] **Recommend an authentication solution**
-  - Microsoft Entra ID (formerly Azure AD) authentication methods
+  - Microsoft Entra ID (formerly Microsoft Entra ID) authentication methods
   - Multi-factor authentication (MFA)
   - Passwordless authentication (FIDO2, Microsoft Authenticator, Windows Hello)
   - Conditional Access policies
@@ -141,7 +141,7 @@ Your responsibilities include advising stakeholders and translating business req
   - Azure Policy definitions and initiatives
   - Policy effects (audit, deny, deployIfNotExists, modify)
   - Regulatory compliance dashboards
-  - Azure Blueprints for environment standardization
+  - Azure Blueprints for environment standardization (deprecated July 2026; use Deployment Stacks)
   - Microsoft Defender for Cloud compliance scoring
 
 - [ ] **Recommend a solution for identity governance**
@@ -442,10 +442,10 @@ Your responsibilities include advising stakeholders and translating business req
 **Module:** [Design network solutions](https://learn.microsoft.com/training/modules/design-network-solutions/)
 
 - [ ] **Recommend a connectivity solution that connects Azure resources to the internet**
-  - Public IP addresses (Standard vs. Basic SKU)
+  - Public IP addresses (Standard SKU only; Basic SKU retired September 2025)
   - Azure NAT Gateway
   - Azure Firewall for outbound traffic
-  - DDoS Protection (Basic vs. Standard)
+  - DDoS Protection (Infrastructure Protection vs. Network Protection)
 
 - [ ] **Recommend a connectivity solution that connects Azure resources to on-premises networks**
   - Site-to-Site VPN Gateway
@@ -466,7 +466,7 @@ Your responsibilities include advising stakeholders and translating business req
   - Application Security Groups (ASGs)
   - Azure Firewall (Standard, Premium)
   - Web Application Firewall (WAF)
-  - Azure DDoS Protection
+  - Azure DDoS Network Protection and DDoS IP Protection
   - Private endpoints and Private Link
   - Service endpoints
 
@@ -504,7 +504,7 @@ Your responsibilities include advising stakeholders and translating business req
 
 | Resource | Link |
 |----------|------|
-| Azure Documentation | [docs.microsoft.com/azure](https://learn.microsoft.com/azure/) |
+| Azure Documentation | [learn.microsoft.com/azure](https://learn.microsoft.com/azure/) |
 | Azure Architecture Center | [learn.microsoft.com/azure/architecture](https://learn.microsoft.com/azure/architecture/) |
 | Azure Well-Architected Framework | [learn.microsoft.com/azure/well-architected](https://learn.microsoft.com/azure/well-architected/) |
 | Cloud Adoption Framework | [learn.microsoft.com/azure/cloud-adoption-framework](https://learn.microsoft.com/azure/cloud-adoption-framework/) |

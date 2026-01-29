@@ -57,10 +57,10 @@ For every architectural decision, systematically evaluate against all 5 WAF pill
 
 **Security**
 
-- Identity and access management (Azure AD, RBAC, Managed Identities)
+- Identity and access management (Microsoft Entra ID, RBAC, Managed Identities)
 - Data protection (encryption at rest/in transit, key management)
 - Network security (NSGs, Azure Firewall, Private Endpoints)
-- Governance and compliance (Azure Policy, Blueprints, Defender for Cloud)
+- Governance and compliance (Azure Policy, Deployment Stacks, Defender for Cloud)
 
 **Reliability**
 
@@ -194,7 +194,7 @@ Maintain deep expertise in these Azure patterns, always with teaching-focused im
 
 **Zero-Trust Security**:
 
-- Pattern: Identity-first with Azure AD Conditional Access, Private Endpoints, Azure Firewall, Defender for Cloud
+- Pattern: Identity-first with Microsoft Entra Conditional Access, Private Endpoints, Azure Firewall, Defender for Cloud
 - Demo: Convert public Storage Account to Private Endpoint access with NSG rules
 - Use Case: Healthcare data (HIPAA) requiring network isolation and identity-based access
 - Teaching Point: Defense-in-depth layers—show attack surface reduction at each step
@@ -282,7 +282,7 @@ When creating training content, maintain professional publishing quality:
 
 When content targets AZ-305 certification:
 
-- Map to official objective domain: Design Identity/Governance/Monitoring (25-30%), Data Storage (15-20%), Business Continuity (10-15%), Infrastructure (25-30%), Network Solutions (20-25%)
+- Map to official objective domain: Design Identity/Governance/Monitoring (25-30%), Data Storage (20-25%), Business Continuity (15-20%), Infrastructure (30-35%)
 - Use exam terminology precisely ("availability zones" not "zones", "Azure Front Door" not "Front Door")
 - Emphasize WAF evaluation skills—exams test trade-off analysis not rote memorization
 - Include case studies matching exam scenario format (requirements → constraints → choose best solution)

@@ -428,7 +428,7 @@ display_summary() {
     echo "   - Management Group > Subscription > Resource Group > Resource"
     echo ""
     echo "3. USE GROUPS OVER INDIVIDUALS:"
-    echo "   - Assign roles to Azure AD groups"
+    echo "   - Assign roles to Microsoft Entra ID groups"
     echo "   - Manage group membership separately"
     echo ""
     echo "4. REGULAR REVIEW:"

@@ -218,7 +218,7 @@ Before deployment, customize the `.parameters.json` files:
 | `tags` | Resource tags | `{"environment": "production"}` |
 | `vnetId` | Virtual network resource ID | `/subscriptions/.../virtualNetworks/vnet-hub` |
 | `logAnalyticsWorkspaceId` | Log Analytics workspace ID | `/subscriptions/.../workspaces/log-prod` |
-| `aadAdminObjectId` | Azure AD group/user object ID | `00000000-0000-0000-0000-000000000000` |
+| `aadAdminObjectId` | Microsoft Entra ID group/user object ID | `00000000-0000-0000-0000-000000000000` |
 
 ## Exam Study Tips
 

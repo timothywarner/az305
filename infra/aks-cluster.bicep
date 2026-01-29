@@ -9,7 +9,7 @@
 // Prerequisites:
 //   - Resource group must exist
 //   - Log Analytics workspace for monitoring
-//   - Azure AD group for cluster admins
+//   - Microsoft Entra ID group for cluster admins
 //   - Virtual network with subnet for AKS (optional)
 // ============================================================================
 
@@ -54,10 +54,10 @@ param userNodeMinCount int = 2
 @maxValue(100)
 param userNodeMaxCount int = 10
 
-@description('Enable Azure AD integration.')
+@description('Enable Microsoft Entra ID integration.')
 param enableAadIntegration bool = true
 
-@description('Azure AD admin group object IDs.')
+@description('Microsoft Entra ID admin group object IDs.')
 param aadAdminGroupObjectIds array = []
 
 @description('Enable Azure RBAC for Kubernetes authorization.')
@@ -329,7 +329,7 @@ output oidcIssuerUrl string = aksCluster.properties.oidcIssuerProfile.issuerURL
 @description('System-assigned managed identity principal ID')
 output clusterIdentityPrincipalId string = aksCluster.identity.principalId
 
-@description('Azure AD integration enabled')
+@description('Microsoft Entra ID integration enabled')
 output aadEnabled bool = enableAadIntegration
 
 @description('Azure RBAC for Kubernetes enabled')

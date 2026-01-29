@@ -1,6 +1,6 @@
 # AZ-305 Practice Questions - Complete Exam Review
 
-**Last Updated**: January 2025 | **Exam Version**: October 18, 2024 Update
+**Last Updated**: January 2026 | **Exam Version**: October 18, 2024 Update
 
 Use these questions after each segment. Focus on understanding WHY each answer is correct--the exam tests design decision-making, not memorization.
 
@@ -907,9 +907,9 @@ Use these questions after each segment. Focus on understanding WHY each answer i
 
 ### Service Name Changes
 - **Azure Active Directory** is now **Microsoft Entra ID**
-- **Azure AD B2B/B2C** is now **Microsoft Entra External ID (B2B/B2C)**
-- **Azure AD Conditional Access** is now **Microsoft Entra Conditional Access**
-- **Azure AD tenant** is now **Microsoft Entra tenant**
+- **Microsoft Entra External ID** replaces Azure AD B2B/B2C
+- **Microsoft Entra Conditional Access** (formerly Azure AD Conditional Access)
+- **Microsoft Entra tenant** (formerly Azure AD tenant)
 
 ### Deprecated Services
 - **Azure Blueprints** deprecated July 2026 - use **Deployment Stacks** + **Template Specs** instead

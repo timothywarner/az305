@@ -58,7 +58,7 @@ Identity and governance form the foundation of every Azure deployment. You canno
 **Design Governance**
 - Recommend a structure for management groups, subscriptions, and resource groups
 - Recommend a strategy for resource tagging
-- Recommend a solution for managing compliance (Azure Policy, Blueprints)
+- Recommend a solution for managing compliance (Azure Policy, Deployment Stacks; Blueprints deprecated July 2026)
 - Recommend a solution for identity governance (PIM, access reviews, entitlement management)
 
 ### Key Topics to Cover

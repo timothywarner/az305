@@ -22,7 +22,7 @@
 //
 // TABLES USED:
 //   - AzureActivity: Azure Activity Log events
-//   - AuditLogs: Azure AD audit events
+//   - AuditLogs: Microsoft Entra ID audit events
 //   - resourcechanges: Azure Resource Graph change data
 //
 // REFERENCES:

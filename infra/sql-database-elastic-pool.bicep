@@ -8,7 +8,7 @@
 //   - Design high availability solutions (Objective 3.2)
 // Prerequisites:
 //   - Two resource groups in different regions for failover
-//   - Azure AD admin configured for SQL Server
+//   - Microsoft Entra ID admin configured for SQL Server
 // ============================================================================
 
 targetScope = 'resourceGroup'
@@ -28,10 +28,10 @@ param primaryLocation string = resourceGroup().location
 @description('Secondary region for failover.')
 param secondaryLocation string = 'westus2'
 
-@description('Azure AD administrator object ID.')
+@description('Microsoft Entra ID administrator object ID.')
 param aadAdminObjectId string
 
-@description('Azure AD administrator login name.')
+@description('Microsoft Entra ID administrator login name.')
 param aadAdminLogin string = 'sql-admin-group'
 
 @description('SQL administrator login username.')

@@ -14,11 +14,11 @@ This is Tim Warner's AZ-305 (Azure Solutions Architect Expert) certification tea
 
 ## Key Directories
 
-- `iac/` - Modern Bicep templates (preferred)
-- `resources/templates/` - ARM templates organized by Azure service (22 categories)
-- `resources/powershell/` - Deployment and management scripts
-- `az305-exam-metadata/` - Exam objective documentation
-- `diagrams/` - Architecture topology diagrams
+- `infra/` - Infrastructure as Code templates (Bicep/ARM)
+- `scripts/` - PowerShell, Azure CLI, and KQL scripts organized by category
+- `docs/` - Exam objective documentation, practice questions, and reference materials
+- `az305-demo/` - Live demo environment documentation
+- `az305-demo/diagrams/` - Architecture topology diagrams
 
 ## Commands
 
@@ -34,7 +34,7 @@ az deployment group create --resource-group <rg-name> --template-file <file.bice
 ```
 
 ### PowerShell Scripts
-Scripts in `resources/powershell/` are standalone - run directly with PowerShell 7.
+Scripts in `scripts/powershell/` are standalone - run directly with PowerShell 7.
 
 ## Technology Preferences (from .cursorrules)
 

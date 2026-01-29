@@ -3,7 +3,7 @@
 %% Exam Focus: Resource organization, governance, connectivity, security
 
 flowchart TB
-    subgraph TENANT["Azure AD Tenant"]
+    subgraph TENANT["Microsoft Entra Tenant"]
         direction TB
 
         subgraph MG_HIERARCHY["Management Group Hierarchy"]
@@ -34,7 +34,7 @@ flowchart TB
 
         subgraph IDENTITY_SUB["Identity Subscription"]
             AD_DS["Active Directory<br/>Domain Services"]
-            ENTRA_CONNECT["Entra ID Connect<br/>Hybrid Identity"]
+            ENTRA_CONNECT["Microsoft Entra Connect<br/>Hybrid Identity"]
             PKI["PKI Services<br/>Certificate Authority"]
         end
 
@@ -98,7 +98,7 @@ flowchart TB
         DEFENDER["Microsoft Defender<br/>for Cloud<br/>- CSPM<br/>- CWP"]
         MDR["Defender for:<br/>- Servers<br/>- Storage<br/>- SQL<br/>- Containers"]
         RBAC["Azure RBAC<br/>- Least Privilege<br/>- Custom Roles"]
-        PIM["Privileged Identity<br/>Management<br/>- JIT Access"]
+        PIM["Microsoft Entra<br/>Privileged Identity<br/>Management<br/>- JIT Access"]
     end
 
     subgraph VENDING["Subscription Vending"]

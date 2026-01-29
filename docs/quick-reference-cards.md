@@ -1,6 +1,6 @@
 # AZ-305 Quick Reference Cards
 
-**Last Updated**: January 2025 | **Exam Version**: October 18, 2024 Update
+**Last Updated**: January 2026 | **Exam Version**: October 18, 2024 Update
 
 Condensed study cards for rapid review. Each card follows Tim's rule: one best answer, clear justification.
 
@@ -27,7 +27,7 @@ Need security analytics? --> Microsoft Sentinel
 Need all? --> Diagnostic settings to multiple destinations
 ```
 
-**Log Analytics Workspace Design Best Practices (2025)**:
+**Log Analytics Workspace Design Best Practices (2026)**:
 - Start with a single workspace to minimize complexity
 - Use resource-context RBAC for access control (not workspace-level)
 - Deploy workspace in same region as resources for performance
@@ -43,13 +43,13 @@ Need all? --> Diagnostic settings to multiple destinations
 | Scenario | Best Solution | Why |
 |----------|---------------|-----|
 | External partner access | Microsoft Entra External ID (B2B collaboration) | Partners use own credentials, access packages for lifecycle |
-| Consumer-facing app (new projects) | Microsoft Entra External ID | Social logins, custom branding, self-service flows (replaces Azure AD B2C for new customers as of May 2025) |
+| Consumer-facing app (new projects) | Microsoft Entra External ID | Social logins, custom branding, self-service flows (replaces Microsoft Entra ID B2C for new customers as of May 2025) |
 | On-premises AD integration (new deployments) | Entra Cloud Sync | Cloud-managed, lightweight agent, multi-forest support, automatic updates |
 | On-premises AD integration (complex scenarios) | Entra Connect Sync v2 | Full feature set, device sync, pass-through auth, AD FS federation |
 | Highly sensitive (no cloud passwords) | Pass-through authentication or Federation | Passwords never leave on-premises |
 
 **Tim's Rule**:
-- For **new** consumer apps: Use Microsoft Entra External ID (Azure AD B2C end-of-sale May 2025)
+- For **new** consumer apps: Use Microsoft Entra External ID (Microsoft Entra ID B2C end-of-sale May 2025)
 - For partners: Always B2B collaboration, never sync external users into your tenant
 - For hybrid identity: Prefer Entra Cloud Sync unless you need features only in Connect Sync
 
@@ -96,7 +96,7 @@ Can the app host a managed identity?
   NO --> Use Key Vault with workload identity federation
 ```
 
-**Tim's Managed Identity Best Practices (2025)**:
+**Tim's Managed Identity Best Practices (2026)**:
 - User-assigned for shared access, compliance requirements, or pre-provisioning
 - System-assigned for audit logging per resource or when identity should die with resource
 - Use one managed identity per region for regional isolation
@@ -154,7 +154,7 @@ Can the app host a managed identity?
 | Entitlement automation | Access packages with expiration | Self-service request, automatic lifecycle |
 | Workload identity protection | Defender for Cloud CIEM | Permissions creep detection, identity risk |
 
-**Microsoft Defender for Cloud Capabilities (2025)**:
+**Microsoft Defender for Cloud Capabilities (2026)**:
 - **Defender CSPM**: Cloud security posture, attack paths, agentless scanning
 - **Defender for Servers**: VM protection, vulnerability assessment
 - **Defender for Containers**: AKS/EKS/GKE protection, runtime threat detection, gated deployment
@@ -188,7 +188,7 @@ Can the app host a managed identity?
 | Business Critical | High IOPS, low latency, read replicas | Local SSD, built-in read replica, 99.99% SLA |
 | Hyperscale | Database > 4TB, rapid scale, fast restore | 128TB max, instant backups, up to 4 read replicas |
 
-**DTU vs. vCore (2025 Guidance)**:
+**DTU vs. vCore (2026 Guidance)**:
 - **DTU**: Simpler, bundled resources, good for predictable workloads
 - **vCore**: Flexible, independent CPU/memory/storage, Azure Hybrid Benefit eligible
 - **Tim's Rule**: Use vCore for new workloads - more flexibility and cost optimization options
@@ -224,7 +224,7 @@ Can the app host a managed identity?
 4. **Consistent Prefix**: Ordered, no gaps (lower latency)
 5. **Eventual**: Highest performance, no ordering guarantees
 
-**Cosmos DB Multi-Region (2025)**:
+**Cosmos DB Multi-Region (2026)**:
 | Configuration | Strong Consistency | Bounded/Session/Eventual |
 |---------------|-------------------|--------------------------|
 | Single-region write | Supported | Supported |
@@ -252,7 +252,7 @@ Can the app host a managed identity?
 | Compliance/WORM | LRS + Immutability | Cool/Archive | Legal holds, time-based retention |
 | Global content delivery | GRS + CDN | Hot | Edge caching worldwide |
 
-**Storage Redundancy Options (2025)**:
+**Storage Redundancy Options (2026)**:
 | Option | Durability | Regions | AZ Protection | Use Case |
 |--------|------------|---------|---------------|----------|
 | LRS | 11 nines | 1 | No | Dev/test, easily recreated data |
@@ -293,7 +293,7 @@ Can the app host a managed identity?
 | Connectors | 100+ | 100+ (same engine) | 100+ (same engine) |
 | Future | Fully supported | Fully supported | Strategic direction (SaaS) |
 
-**Tim's 2025 Guidance**:
+**Tim's 2026 Guidance**:
 - **New projects**: Evaluate Microsoft Fabric first for unified analytics
 - **Existing ADF/Synapse**: Continue using - no deprecation planned
 - **Synapse Pipelines**: Use when destination is Synapse Analytics
@@ -315,7 +315,7 @@ Can the app host a managed identity?
 
 **Tim's Clarification**: Backup = get your data back. DR = keep your business running. You need both.
 
-**Azure Backup Supported Workloads (2025)**:
+**Azure Backup Supported Workloads (2026)**:
 - Azure VMs (full VM backup, agentless crash-consistent)
 - Azure SQL in VM (application-aware)
 - Azure Files (share-level, vaulted backup GA)
@@ -331,7 +331,7 @@ Can the app host a managed identity?
 
 **Note**: Azure SQL Database PaaS and Cosmos DB use built-in backup (not Azure Backup service).
 
-**New in 2025**:
+**New in 2026**:
 - Threat detection with Defender for Cloud integration (preview)
 - Vaulted backup for Data Lake Storage (GA)
 - Agentless multi-disk crash-consistent backups for VMs (GA)
@@ -360,7 +360,7 @@ Can the app host a managed identity?
 - **RPO (Recovery Point Objective)**: How much data can you lose? (Time between last backup and failure)
 - **RTO (Recovery Time Objective)**: How long can you be down? (Time to restore service)
 
-**Site Recovery SLAs (2025)**:
+**Site Recovery SLAs (2026)**:
 - RTO SLA: Up to 1 hour (with recovery plans)
 - RPO: ~30 seconds for continuous replication (Azure VMs, VMware)
 - RPO: 30 seconds to 5 minutes for Hyper-V
@@ -384,7 +384,7 @@ Can the app host a managed identity?
 | Cosmos DB | Zone redundancy | Multi-region writes (99.999% SLA) |
 | Storage | ZRS | GZRS + manual failover (or RA-GZRS for read) |
 
-**SLA Math (2025)**:
+**SLA Math (2026)**:
 | Configuration | SLA |
 |---------------|-----|
 | Single VM (Premium SSD) | 99.9% |
@@ -420,7 +420,7 @@ Can the app host a managed identity?
 | PostgreSQL Flexible | Zone-redundant HA | Read replicas + manual failover |
 | MySQL Flexible | Zone-redundant HA | Read replicas + manual failover |
 
-**Auto-Failover Group Features (2025)**:
+**Auto-Failover Group Features (2026)**:
 1. **Listener endpoints** (connection string doesn't change)
    - Read-write: `<fog-name>.database.windows.net`
    - Read-only: `<fog-name>.secondary.database.windows.net`
@@ -468,7 +468,7 @@ What are you running?
   +-- AI/ML workloads --> Azure Machine Learning or AKS
 ```
 
-**Container Platform Selection (2025)**:
+**Container Platform Selection (2026)**:
 | Scenario | Best Choice | Why |
 |----------|-------------|-----|
 | Simple containerized apps, scale-to-zero | Container Apps | Serverless, built-in scaling, Dapr integration |
@@ -504,7 +504,7 @@ What are you running?
 | Enterprise messaging (transactions, sessions) | Service Bus | Queues, topics, FIFO, exactly-once, dead-letter |
 | Simple task queue | Storage Queue | Basic, cheap, at-least-once |
 
-**Event Grid vs. Event Hubs vs. Service Bus (2025)**:
+**Event Grid vs. Event Hubs vs. Service Bus (2026)**:
 | Feature | Event Grid | Event Hubs | Service Bus |
 |---------|------------|------------|-------------|
 | **Purpose** | Event distribution | Event streaming | Enterprise messaging |
@@ -525,7 +525,7 @@ Need cheap, simple queue? --> Storage Queue
 React to Azure resource changes? --> Event Grid (native integration)
 ```
 
-**Event Grid 2025 Updates**:
+**Event Grid 2026 Updates**:
 - MQTT support (IoT scenarios)
 - Cross-tenant delivery
 - Namespace topics for high-throughput
@@ -537,7 +537,7 @@ React to Azure resource changes? --> Event Grid (native integration)
 
 ### Card 4.3: API Management
 
-**APIM Tiers (2025)**:
+**APIM Tiers (2026)**:
 | Tier | Use Case | Key Features |
 |------|----------|--------------|
 | **Consumption** | Serverless APIs, low volume | Pay-per-call, auto-scale, no SLA |
@@ -630,7 +630,7 @@ Internet --> Front Door (WAF) --> APIM (Premium v2, VNet injected) --> Backend s
 
 **Tim's Connectivity Rule**: Use ExpressRoute for production workloads with predictable latency requirements. VPN for dev/test or backup path.
 
-**VPN Gateway SKUs (2025)**:
+**VPN Gateway SKUs (2026)**:
 - **Basic**: Retired September 30, 2025 - migrate to VpnGw1 or higher
 - **VpnGw1-5**: Production workloads, zone-redundant options available
 - **VpnGw1AZ-5AZ**: Zone-redundant for HA
@@ -649,7 +649,7 @@ Internet --> Front Door (WAF) --> APIM (Premium v2, VNet injected) --> Backend s
 
 **Tim's Preference**: Always Private Link for production. Service Endpoints are acceptable for dev/test or when Private Link isn't supported.
 
-**Private Link vs. Service Endpoints (2025)**:
+**Private Link vs. Service Endpoints (2026)**:
 | Feature | Private Link | Service Endpoints |
 |---------|--------------|-------------------|
 | IP Address | Private (your VNet) | Public (Microsoft) |
@@ -692,7 +692,7 @@ Global or Regional?
         +-- TCP/UDP Layer 4 --> Load Balancer Standard
 ```
 
-**Important (2025)**: Basic Load Balancer retired September 30, 2025. Migrate to Standard.
+**Important (2026)**: Basic Load Balancer retired September 30, 2025. Migrate to Standard.
 
 [Private Link](https://learn.microsoft.com/azure/private-link/private-link-overview) | [Load Balancing Options](https://learn.microsoft.com/azure/architecture/guide/technology-choices/load-balancing-overview)
 
@@ -751,10 +751,10 @@ Global or Regional?
 5. **Tim's mantra**: Zero Trust + Managed Identity + Private Link + Bicep
 
 **Service Name Changes to Remember**:
-- Azure AD --> Microsoft Entra ID
-- Azure AD B2B --> Microsoft Entra External ID (B2B collaboration)
-- Azure AD B2C --> Microsoft Entra External ID (for new projects, B2C end-of-sale May 2025)
-- Azure AD Connect --> Microsoft Entra Connect Sync (consider Cloud Sync for new deployments)
+- Microsoft Entra ID --> Microsoft Entra ID
+- Microsoft Entra ID B2B --> Microsoft Entra External ID (B2B collaboration)
+- Microsoft Entra ID B2C --> Microsoft Entra External ID (for new projects, B2C end-of-sale May 2025)
+- Microsoft Entra ID Connect --> Microsoft Entra Connect Sync (consider Cloud Sync for new deployments)
 
 **Good luck on your exam!**
 

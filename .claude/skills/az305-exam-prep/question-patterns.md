@@ -113,7 +113,7 @@ What should you recommend?
 ```
 
 **Example trigger topics:**
-- Hybrid identity with Azure AD Connect
+- Hybrid identity with Microsoft Entra Connect
 - ExpressRoute vs VPN Gateway selection
 - Azure Arc for hybrid management
 - Hybrid DNS resolution

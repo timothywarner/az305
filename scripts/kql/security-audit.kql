@@ -17,13 +17,13 @@
 //
 // PREREQUISITES:
 //   - Log Analytics Workspace with connected data sources
-//   - Azure AD sign-in logs (requires P1/P2 license)
+//   - Microsoft Entra ID sign-in logs (requires P1/P2 license)
 //   - Azure Activity logs configured
 //   - Appropriate RBAC permissions to query logs
 //
 // TABLES USED:
-//   - SigninLogs: Azure AD sign-in events
-//   - AuditLogs: Azure AD audit events
+//   - SigninLogs: Microsoft Entra ID sign-in events
+//   - AuditLogs: Microsoft Entra ID audit events
 //   - AzureActivity: Azure resource activity logs
 //   - SecurityAlert: Microsoft Defender alerts
 //   - AADUserRiskEvents: User risk detection events
@@ -179,7 +179,7 @@ AzureActivity
 // -----------------------------------------------------------------------------
 // QUERY 6: User Risk Events from Identity Protection
 // -----------------------------------------------------------------------------
-// WHY: Azure AD Identity Protection detects risky user behaviors.
+// WHY: Microsoft Entra ID Identity Protection detects risky user behaviors.
 // Unfamiliar locations combined with anomalous patterns often indicate
 // compromised accounts requiring immediate investigation.
 // -----------------------------------------------------------------------------

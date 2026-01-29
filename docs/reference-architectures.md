@@ -1,6 +1,6 @@
 # AZ-305 Reference Architectures
 
-**Last Updated**: January 2025 | **Exam Version**: October 18, 2024 Update
+**Last Updated**: January 2026 | **Exam Version**: October 18, 2024 Update
 
 Key architectures mapped directly to exam objectives. Each architecture includes Tim's opinionated recommendations and implementation guidance.
 
