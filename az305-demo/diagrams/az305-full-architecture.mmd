@@ -1,0 +1,130 @@
+%%{ init: { "theme": "base", "themeVariables": { "primaryColor": "#0078D4", "primaryTextColor": "#fff", "lineColor": "#5C5C5C", "secondaryColor": "#50E6FF", "tertiaryColor": "#F2F2F2" } } }%%
+flowchart TB
+
+    %% ---------------------------------------------------------------
+    %% API Management (separate RG)
+    %% ---------------------------------------------------------------
+    subgraph APIM["API Management (rg-warnerco)"]
+        apim["warnerco-apim\nAPIM Gateway"]
+        ca["warnerco-schematica-classroom\nContainer App"]
+        apim -->|proxy| ca
+    end
+
+    %% ---------------------------------------------------------------
+    %% Networking
+    %% ---------------------------------------------------------------
+    subgraph NET["Networking"]
+        subgraph vnetWin["vnet-win 10.1.0.0/16"]
+            snetDefault["snet-win-default\n10.1.0.0/24"]
+            snetAppGw["snet-appgw\n10.1.1.0/24"]
+            snetAks["snet-aks\n10.1.2.0/24"]
+        end
+        subgraph vnetLinux["vnet-linux 10.2.0.0/16"]
+            snetLinux["snet-linux-default\n10.2.0.0/24"]
+        end
+        vnetWin <-->|VNet Peering| vnetLinux
+    end
+
+    %% ---------------------------------------------------------------
+    %% Compute
+    %% ---------------------------------------------------------------
+    subgraph COMPUTE["Compute"]
+        vmWin["vm-win01\nWindows + IIS"]
+        vmLinux["vm-linux01\nLinux"]
+        aks["AKS Cluster"]
+        funcApp["func-az305-tw\nFunction App"]
+        funcSb["func-sb-az305-tw\nFunction App\n(Service Bus trigger)"]
+        logicApp["logic-az305-tw\nLogic App"]
+    end
+
+    vmWin --- snetDefault
+    vmLinux --- snetLinux
+    aks --- snetAks
+
+    %% ---------------------------------------------------------------
+    %% Ingress / Traffic
+    %% ---------------------------------------------------------------
+    subgraph INGRESS["Ingress"]
+        tm["Traffic Manager\nDNS Routing"]
+        appGw["App Gateway + WAF"]
+    end
+
+    tm -->|endpoint| vmWin
+    tm -->|endpoint| vmLinux
+    appGw --- snetAppGw
+    appGw -->|backend pool| vmWin
+
+    %% ---------------------------------------------------------------
+    %% Data
+    %% ---------------------------------------------------------------
+    subgraph DATA["Data Services"]
+        sqlDb["SQL Database\nProducts / Orders / SalesImport"]
+        cosmosDb["Cosmos DB\nSensorData"]
+        storage["Storage Account\nBlob + Lifecycle"]
+        sb["sb-az305-tw\nService Bus\norders-queue"]
+        adf["Azure Data Factory\nPipeline"]
+    end
+
+    storage -->|CSV blob| adf
+    adf -->|Copy Activity| sqlDb
+    sb -->|trigger| funcSb
+
+    %% ---------------------------------------------------------------
+    %% Security
+    %% ---------------------------------------------------------------
+    subgraph SEC["Security"]
+        kv["Key Vault"]
+    end
+
+    kv -.->|secrets| funcApp
+    kv -.->|secrets| funcSb
+    kv -.->|secrets| logicApp
+
+    %% ---------------------------------------------------------------
+    %% Monitoring
+    %% ---------------------------------------------------------------
+    subgraph MON["Monitoring"]
+        law["Log Analytics\nWorkspace"]
+        appIns["Application Insights"]
+    end
+
+    vmWin -.->|diagnostics| law
+    vmLinux -.->|diagnostics| law
+    aks -.->|diagnostics| law
+    funcApp -.->|telemetry| appIns
+    funcSb -.->|telemetry| appIns
+    logicApp -.->|telemetry| appIns
+    sqlDb -.->|diagnostics| law
+    appGw -.->|diagnostics| law
+    appIns -.->|workspace| law
+
+    %% ---------------------------------------------------------------
+    %% BCDR
+    %% ---------------------------------------------------------------
+    subgraph BCDR["Business Continuity / DR"]
+        rsvBackup["Recovery Services Vault\n(Backup)"]
+        rsvAsr["Recovery Services Vault\n(ASR)"]
+    end
+
+    rsvBackup -->|backup| vmWin
+    rsvAsr -->|replication| vmLinux
+
+    %% ---------------------------------------------------------------
+    %% Styling
+    %% ---------------------------------------------------------------
+    classDef netStyle fill:#0078D4,stroke:#005A9E,color:#fff
+    classDef computeStyle fill:#00A36C,stroke:#007A4D,color:#fff
+    classDef dataStyle fill:#E83E8C,stroke:#C4286E,color:#fff
+    classDef secStyle fill:#FFB900,stroke:#D49A00,color:#000
+    classDef monStyle fill:#7719AA,stroke:#5C0F82,color:#fff
+    classDef bcdrStyle fill:#FF6F61,stroke:#D45A50,color:#fff
+    classDef apimStyle fill:#FF8C00,stroke:#CC7000,color:#fff
+
+    class snetDefault,snetAppGw,snetAks,snetLinux netStyle
+    class vmWin,vmLinux,aks,funcApp,funcSb,logicApp computeStyle
+    class sqlDb,cosmosDb,storage,sb,adf dataStyle
+    class kv secStyle
+    class law,appIns monStyle
+    class rsvBackup,rsvAsr bcdrStyle
+    class apim,ca apimStyle
+    class tm,appGw netStyle

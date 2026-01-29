@@ -1,0 +1,84 @@
+%%{ init: { "theme": "base", "themeVariables": { "primaryColor": "#0078D4", "primaryTextColor": "#fff", "lineColor": "#5C5C5C" } } }%%
+flowchart TB
+
+    internet(("Internet\nClients"))
+
+    %% ---------------------------------------------------------------
+    %% DNS / Traffic Management
+    %% ---------------------------------------------------------------
+    subgraph DNS["Traffic Management"]
+        tm["Traffic Manager\nPerformance / Priority Routing"]
+    end
+
+    internet --> tm
+
+    %% ---------------------------------------------------------------
+    %% Public IPs
+    %% ---------------------------------------------------------------
+    subgraph PIPS["Public Endpoints"]
+        pipWin["PIP: vm-win01"]
+        pipLinux["PIP: vm-linux01"]
+        pipAppGw["PIP: App Gateway"]
+    end
+
+    tm -->|endpoint| pipWin
+    tm -->|endpoint| pipLinux
+    internet -->|HTTPS :443| pipAppGw
+
+    %% ---------------------------------------------------------------
+    %% vnet-win
+    %% ---------------------------------------------------------------
+    subgraph vnetWin["vnet-win  10.1.0.0/16"]
+        subgraph snetAppGw["snet-appgw  10.1.1.0/24"]
+            appGw["Application Gateway\n+ WAF v2\nSKU: Standard_v2"]
+        end
+        subgraph snetDefault["snet-win-default  10.1.0.0/24"]
+            vmWin["vm-win01\nWindows Server\nIIS Web Server"]
+            nsgWin["NSG: nsg-win\nAllow 80, 443, 3389"]
+        end
+        subgraph snetAks["snet-aks  10.1.2.0/24"]
+            aks["AKS Cluster\nAzure CNI\nService CIDR: 10.3.0.0/16\nDNS: 10.3.0.10"]
+            nsgAks["NSG: nsg-aks\nManaged rules"]
+        end
+    end
+
+    pipAppGw --> appGw
+    appGw -->|backend pool\nHTTP :80| vmWin
+    pipWin --> vmWin
+    nsgWin -.->|associated| snetDefault
+    nsgAks -.->|associated| snetAks
+
+    %% ---------------------------------------------------------------
+    %% vnet-linux
+    %% ---------------------------------------------------------------
+    subgraph vnetLinux["vnet-linux  10.2.0.0/16"]
+        subgraph snetLinux["snet-linux-default  10.2.0.0/24"]
+            vmLinux["vm-linux01\nUbuntu"]
+            nsgLinux["NSG: nsg-linux\nAllow 22, 80, 443"]
+        end
+    end
+
+    pipLinux --> vmLinux
+    nsgLinux -.->|associated| snetLinux
+
+    %% ---------------------------------------------------------------
+    %% Peering
+    %% ---------------------------------------------------------------
+    vnetWin <-->|"VNet Peering\nBidirectional\nAllow forwarded traffic"| vnetLinux
+
+    %% ---------------------------------------------------------------
+    %% Styling
+    %% ---------------------------------------------------------------
+    classDef vnetStyle fill:#E8F4FD,stroke:#0078D4,color:#000
+    classDef subnetStyle fill:#CCE4F7,stroke:#0078D4,color:#000
+    classDef vmStyle fill:#00A36C,stroke:#007A4D,color:#fff
+    classDef gwStyle fill:#0078D4,stroke:#005A9E,color:#fff
+    classDef nsgStyle fill:#FFB900,stroke:#D49A00,color:#000
+    classDef pipStyle fill:#F2F2F2,stroke:#5C5C5C,color:#000
+    classDef extStyle fill:#5C5C5C,stroke:#333,color:#fff
+
+    class vmWin,vmLinux,aks vmStyle
+    class appGw,tm gwStyle
+    class nsgWin,nsgLinux,nsgAks nsgStyle
+    class pipWin,pipLinux,pipAppGw pipStyle
+    class internet extStyle

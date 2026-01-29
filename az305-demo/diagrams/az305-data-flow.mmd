@@ -1,0 +1,111 @@
+%%{ init: { "theme": "base", "themeVariables": { "primaryColor": "#0078D4", "primaryTextColor": "#fff", "lineColor": "#5C5C5C" } } }%%
+flowchart LR
+
+    %% ---------------------------------------------------------------
+    %% Storage Account + Lifecycle
+    %% ---------------------------------------------------------------
+    subgraph STORAGE["Storage Account (Blob)"]
+        direction TB
+        rawData["raw-data container\nCSV uploads"]
+        hot["Hot tier\n(0-30 days)"]
+        cool["Cool tier\n(30-90 days)"]
+        archive["Archive tier\n(90-365 days)"]
+        delete["Delete\n(365+ days)"]
+        rawData --> hot
+        hot -->|"lifecycle rule\n30 days"| cool
+        cool -->|"lifecycle rule\n90 days"| archive
+        archive -->|"lifecycle rule\n365 days"| delete
+    end
+
+    %% ---------------------------------------------------------------
+    %% ADF Pipeline
+    %% ---------------------------------------------------------------
+    subgraph ADF["Azure Data Factory"]
+        pipeline["Pipeline:\nblob-to-sql"]
+        copyAct["Copy Activity\nCSV -> SQL"]
+        pipeline --> copyAct
+    end
+
+    rawData -->|"source\n(blob CSV)"| copyAct
+
+    %% ---------------------------------------------------------------
+    %% SQL Database
+    %% ---------------------------------------------------------------
+    subgraph SQL["SQL Database"]
+        direction TB
+        products["Products table"]
+        orders["Orders table"]
+        salesImport["SalesImport table"]
+    end
+
+    copyAct -->|"sink"| salesImport
+
+    %% ---------------------------------------------------------------
+    %% Cosmos DB
+    %% ---------------------------------------------------------------
+    subgraph COSMOS["Cosmos DB (NoSQL API)"]
+        direction TB
+        sensorDb["Database: SensorData"]
+        readings["Container: readings\nPartition key: /deviceId"]
+        sensorDb --> readings
+    end
+
+    %% ---------------------------------------------------------------
+    %% Service Bus Flow
+    %% ---------------------------------------------------------------
+    subgraph SBFLOW["Service Bus Integration"]
+        direction TB
+        httpReq(("HTTP Request"))
+        funcApp["func-az305-tw\nFunction App\n(HTTP trigger)"]
+        sbQueue["sb-az305-tw\norders-queue"]
+        funcSb["func-sb-az305-tw\nFunction App\n(SB trigger)"]
+    end
+
+    httpReq -->|"POST /api/order"| funcApp
+    funcApp -->|"enqueue message"| sbQueue
+    sbQueue -->|"trigger"| funcSb
+    funcSb -->|"write order"| orders
+
+    %% ---------------------------------------------------------------
+    %% IoT / Sensor Path
+    %% ---------------------------------------------------------------
+    sensors(("IoT Devices"))
+    sensors -->|"sensor telemetry"| readings
+
+    %% ---------------------------------------------------------------
+    %% Monitoring
+    %% ---------------------------------------------------------------
+    subgraph MON["Monitoring"]
+        law["Log Analytics\nWorkspace"]
+        appIns["Application Insights"]
+    end
+
+    SQL -.->|"diagnostics"| law
+    COSMOS -.->|"diagnostics"| law
+    STORAGE -.->|"diagnostics"| law
+    funcApp -.->|"telemetry"| appIns
+    funcSb -.->|"telemetry"| appIns
+    ADF -.->|"diagnostics"| law
+    appIns -.->|"workspace"| law
+
+    %% ---------------------------------------------------------------
+    %% Styling
+    %% ---------------------------------------------------------------
+    classDef storageStyle fill:#0078D4,stroke:#005A9E,color:#fff
+    classDef sqlStyle fill:#E83E8C,stroke:#C4286E,color:#fff
+    classDef cosmosStyle fill:#7719AA,stroke:#5C0F82,color:#fff
+    classDef funcStyle fill:#00A36C,stroke:#007A4D,color:#fff
+    classDef sbStyle fill:#FF8C00,stroke:#CC7000,color:#fff
+    classDef monStyle fill:#5C5C5C,stroke:#333,color:#fff
+    classDef lifecycleStyle fill:#CCE4F7,stroke:#0078D4,color:#000
+    classDef extStyle fill:#F2F2F2,stroke:#5C5C5C,color:#000
+
+    class rawData,hot storageStyle
+    class cool,archive,delete lifecycleStyle
+    class products,orders,salesImport sqlStyle
+    class sensorDb,readings cosmosStyle
+    class funcApp,funcSb funcStyle
+    class sbQueue sbStyle
+    class law,appIns monStyle
+    class pipeline,copyAct storageStyle
+    class httpReq,sensors extStyle

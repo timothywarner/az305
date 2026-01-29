@@ -1,0 +1,86 @@
+%%{ init: { "theme": "base", "themeVariables": { "primaryColor": "#0078D4", "primaryTextColor": "#fff", "lineColor": "#5C5C5C" } } }%%
+flowchart LR
+
+    %% ---------------------------------------------------------------
+    %% AZ-305 Exam Domains
+    %% ---------------------------------------------------------------
+    subgraph D1["Domain 1: Identity, Governance, Monitoring\n(25-30%)"]
+        d1a["Governance & Security"]
+        d1b["Monitoring & Logging"]
+    end
+
+    subgraph D2["Domain 2: Data Storage\n(20-25%)"]
+        d2a["Relational & NoSQL"]
+        d2b["Storage & Integration"]
+    end
+
+    subgraph D3["Domain 3: Business Continuity\n(15-20%)"]
+        d3a["Backup & DR"]
+        d3b["High Availability"]
+    end
+
+    subgraph D4["Domain 4: Infrastructure\n(30-35%)"]
+        d4a["Compute"]
+        d4b["Networking"]
+        d4c["App Integration"]
+    end
+
+    %% ---------------------------------------------------------------
+    %% Domain 1 Resources
+    %% ---------------------------------------------------------------
+    d1a --> kv["Key Vault"]
+    d1a --> nsg["NSGs\n(snet-win, snet-linux)"]
+    d1b --> law["Log Analytics Workspace"]
+    d1b --> appIns["Application Insights"]
+    d1b --> diag["Diagnostic Settings\n(VMs, SQL, App GW)"]
+    diag --> law
+
+    %% ---------------------------------------------------------------
+    %% Domain 2 Resources
+    %% ---------------------------------------------------------------
+    d2a --> sql["SQL Database\nProducts / Orders / SalesImport"]
+    d2a --> cosmos["Cosmos DB\nSensorData (deviceId partition)"]
+    d2b --> stor["Storage Account\nBlob + Lifecycle Policy"]
+    d2b --> adf["Azure Data Factory\nBlob CSV -> SQL"]
+
+    %% ---------------------------------------------------------------
+    %% Domain 3 Resources
+    %% ---------------------------------------------------------------
+    d3a --> rsvBk["RSV Backup\nvm-win01"]
+    d3a --> rsvAsr["RSV ASR\nvm-linux01"]
+    d3b --> peer["VNet Peering\nCross-VNet HA"]
+    d3b --> zone["Zone Redundancy\nSQL, Storage"]
+    d3b --> tm2["Traffic Manager\nDNS Failover"]
+
+    %% ---------------------------------------------------------------
+    %% Domain 4 Resources
+    %% ---------------------------------------------------------------
+    d4a --> vmw["vm-win01\nWindows + IIS"]
+    d4a --> vml["vm-linux01\nLinux"]
+    d4a --> aks["AKS Cluster"]
+    d4b --> vnetw["vnet-win\n10.1.0.0/16"]
+    d4b --> vnetl["vnet-linux\n10.2.0.0/16"]
+    d4b --> appgw["App Gateway + WAF"]
+    d4b --> tm["Traffic Manager"]
+    d4c --> func["Function Apps\nfunc-az305-tw\nfunc-sb-az305-tw"]
+    d4c --> logic["Logic App\nlogic-az305-tw"]
+    d4c --> sb["Service Bus\norders-queue"]
+    d4c --> apim["APIM\nwarnerco-apim"]
+
+    %% ---------------------------------------------------------------
+    %% Styling
+    %% ---------------------------------------------------------------
+    classDef domain1 fill:#7719AA,stroke:#5C0F82,color:#fff
+    classDef domain2 fill:#E83E8C,stroke:#C4286E,color:#fff
+    classDef domain3 fill:#FF6F61,stroke:#D45A50,color:#fff
+    classDef domain4 fill:#0078D4,stroke:#005A9E,color:#fff
+    classDef resource fill:#F2F2F2,stroke:#5C5C5C,color:#000
+
+    class d1a,d1b domain1
+    class d2a,d2b domain2
+    class d3a,d3b domain3
+    class d4a,d4b,d4c domain4
+    class kv,nsg,law,appIns,diag resource
+    class sql,cosmos,stor,adf resource
+    class rsvBk,rsvAsr,peer,zone,tm2 resource
+    class vmw,vml,aks,vnetw,vnetl,appgw,tm,func,logic,sb,apim resource
