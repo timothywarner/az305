@@ -1,0 +1,593 @@
+// ============================================================================
+// Title:       AZ-305 KQL Monitoring Query Reference
+// Domain:      AZ-305 Domain 1 - Design Identity, Governance & Monitoring
+// Description: Comprehensive Log Analytics / KQL query collection organized
+//              by monitoring scenario. Covers infrastructure, security,
+//              application performance, cost governance, data platform, and
+//              advanced analytics patterns.
+// Author:      Tim Warner
+// Date:        January 2026
+// Reference:   https://learn.microsoft.com/azure/azure-monitor/logs/log-query-overview
+// ============================================================================
+
+
+// ============================================================================
+// SECTION A: INFRASTRUCTURE MONITORING
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// A1: VM Heartbeat Monitoring - Detect Offline VMs
+// WHEN TO USE: Alert on VMs that stop sending heartbeats, indicating agent
+//   failure, network isolation, or VM shutdown.
+// EXAM TIP: The Heartbeat table is populated by the Azure Monitor Agent (AMA).
+//   AMA replaces the legacy Log Analytics agent (MMA), which was deprecated
+//   August 2024. AZ-305 expects you to recommend AMA for all new deployments.
+// ---------------------------------------------------------------------------
+Heartbeat
+| summarize LastHeartbeat = max(TimeGenerated) by Computer, ResourceGroup, _ResourceId
+| where LastHeartbeat < ago(5m)
+| extend MinutesSinceLastHeartbeat = datetime_diff('minute', now(), LastHeartbeat)
+| project Computer, ResourceGroup, LastHeartbeat, MinutesSinceLastHeartbeat, _ResourceId
+| order by MinutesSinceLastHeartbeat desc
+
+// ---------------------------------------------------------------------------
+// A2: VM CPU Performance with Percentiles
+// WHEN TO USE: Capacity planning and right-sizing decisions. Percentiles
+//   reveal sustained load vs. transient spikes -- critical for SKU selection.
+// EXAM TIP: Use percentile_tdigest() or percentiles() for capacity planning.
+//   The p95 value is the industry standard for SLA-based sizing. P50 (median)
+//   shows typical load; p99 shows worst-case for reliability planning.
+// ---------------------------------------------------------------------------
+Perf
+| where ObjectName == "Processor" and CounterName == "% Processor Time"
+| where InstanceName == "_Total"
+| where TimeGenerated > ago(24h)
+| summarize
+    AvgCPU = avg(CounterValue),
+    P50CPU = percentile(CounterValue, 50),
+    P95CPU = percentile(CounterValue, 95),
+    P99CPU = percentile(CounterValue, 99),
+    MaxCPU = max(CounterValue)
+    by Computer, bin(TimeGenerated, 1h)
+| order by TimeGenerated desc, Computer asc
+
+// ---------------------------------------------------------------------------
+// A3: VM Memory Utilization
+// WHEN TO USE: Identify memory-constrained VMs for vertical scaling or
+//   application optimization. Combine with CPU data for holistic sizing.
+// EXAM TIP: Memory metrics use "Available MBytes" (not "% Used").
+//   You must calculate percentage from total memory via InsightsMetrics
+//   or a known baseline.
+// ---------------------------------------------------------------------------
+Perf
+| where ObjectName == "Memory" and CounterName == "Available MBytes"
+| where TimeGenerated > ago(24h)
+| summarize
+    AvgAvailableMB = avg(CounterValue),
+    MinAvailableMB = min(CounterValue),
+    P5AvailableMB = percentile(CounterValue, 5)
+    by Computer, bin(TimeGenerated, 1h)
+| where MinAvailableMB < 512
+| order by MinAvailableMB asc
+
+// ---------------------------------------------------------------------------
+// A4: Disk Space Monitoring - Low Disk Warning
+// WHEN TO USE: Proactive capacity alerting before disk exhaustion causes
+//   application failures or OS crashes.
+// EXAM TIP: For Azure Managed Disks, also monitor via Azure Metrics
+//   (platform metrics). KQL via Perf table is for OS-level visibility
+//   from the Azure Monitor Agent.
+// ---------------------------------------------------------------------------
+Perf
+| where ObjectName == "LogicalDisk" and CounterName == "% Free Space"
+| where InstanceName !in ("_Total", "HarddiskVolume1")
+| where TimeGenerated > ago(1h)
+| summarize CurrentFreePercent = avg(CounterValue) by Computer, InstanceName
+| where CurrentFreePercent < 15
+| order by CurrentFreePercent asc
+
+// ---------------------------------------------------------------------------
+// A5: NSG Flow Log Analysis - Blocked Traffic Patterns
+// WHEN TO USE: Investigate network connectivity issues, detect unauthorized
+//   access attempts, and validate NSG rule effectiveness.
+// EXAM TIP: NSG flow logs v2 include throughput data. For AZ-305, recommend
+//   NSG flow logs for network troubleshooting and Azure Firewall logs for
+//   centralized egress control. Traffic Analytics provides visualization.
+// ---------------------------------------------------------------------------
+AzureNetworkAnalytics_CL
+| where FlowStatus_s == "D"  // Denied flows
+| where TimeGenerated > ago(24h)
+| summarize
+    DeniedFlowCount = count(),
+    DistinctSourceIPs = dcount(SrcIP_s)
+    by NSGRule_s, DestPort_d, FlowDirection_s, bin(TimeGenerated, 1h)
+| where DeniedFlowCount > 100
+| order by DeniedFlowCount desc
+
+// ---------------------------------------------------------------------------
+// A6: Network Watcher Connection Monitor Results
+// WHEN TO USE: Validate end-to-end connectivity between Azure resources,
+//   on-premises endpoints, and external services.
+// EXAM TIP: Connection Monitor replaces the legacy Network Performance
+//   Monitor (NPM). For AZ-305, recommend Connection Monitor for hybrid
+//   network validation alongside Azure Monitor Network Insights.
+// ---------------------------------------------------------------------------
+NWConnectionMonitorTestResult
+| where TimeGenerated > ago(24h)
+| where TestResult == "Fail"
+| summarize
+    FailureCount = count(),
+    AvgRoundTripTimeMs = avg(AvgRoundTripTimeMs),
+    LastFailure = max(TimeGenerated)
+    by TestGroupName, TestConfigurationName, SourceAddress, DestinationAddress
+| order by FailureCount desc
+
+
+// ============================================================================
+// SECTION B: SECURITY MONITORING
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// B1: Failed Sign-In Attempts from Microsoft Entra ID
+// WHEN TO USE: Detect brute-force attacks, credential stuffing, or
+//   misconfigured service accounts. Feed into Conditional Access evaluation.
+// EXAM TIP: SigninLogs require Microsoft Entra ID P1 or P2 license to stream
+//   to Log Analytics. For AZ-305, recommend Entra ID P2 for Identity
+//   Protection risk-based Conditional Access policies.
+// ---------------------------------------------------------------------------
+SigninLogs
+| where ResultType != "0"  // Non-zero means failure
+| where TimeGenerated > ago(24h)
+| summarize
+    FailedAttempts = count(),
+    DistinctIPs = dcount(IPAddress),
+    Applications = make_set(AppDisplayName, 5),
+    ErrorCodes = make_set(ResultType, 5)
+    by UserPrincipalName, Category
+| where FailedAttempts > 10
+| order by FailedAttempts desc
+
+// ---------------------------------------------------------------------------
+// B2: Privileged Role Activations (PIM Audit)
+// WHEN TO USE: Monitor just-in-time (JIT) privilege escalation and detect
+//   suspicious role activations outside business hours.
+// EXAM TIP: Privileged Identity Management (PIM) requires Entra ID P2.
+//   AZ-305 frequently tests on recommending PIM for Global Admin, Contributor,
+//   and Owner roles. Always recommend JIT over standing assignments.
+// ---------------------------------------------------------------------------
+AuditLogs
+| where OperationName has_any ("Add member to role", "Add eligible member to role")
+| where TimeGenerated > ago(7d)
+| extend TargetUser = tostring(TargetResources[0].userPrincipalName)
+| extend RoleName = tostring(TargetResources[0].displayName)
+| extend InitiatedBy = tostring(InitiatedBy.user.userPrincipalName)
+| project TimeGenerated, OperationName, TargetUser, RoleName, InitiatedBy, Result
+| order by TimeGenerated desc
+
+// ---------------------------------------------------------------------------
+// B3: Key Vault Access Patterns and Anomalies
+// WHEN TO USE: Audit secret/key/certificate access, detect unauthorized
+//   retrieval attempts, and validate RBAC/access policy effectiveness.
+// EXAM TIP: AZ-305 recommends Key Vault RBAC authorization model over
+//   legacy access policies. Enable diagnostic settings to send AuditEvent
+//   logs to Log Analytics for compliance and threat detection.
+// ---------------------------------------------------------------------------
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where TimeGenerated > ago(24h)
+| where OperationName in ("SecretGet", "SecretSet", "SecretList", "KeySign", "CertificateGet")
+| summarize
+    AccessCount = count(),
+    DistinctCallers = dcount(CallerIPAddress),
+    Operations = make_set(OperationName)
+    by Resource, CallerIPAddress, Identity_claim_upn_s
+| order by AccessCount desc
+
+// ---------------------------------------------------------------------------
+// B4: Microsoft Defender for Cloud Security Alerts
+// WHEN TO USE: Centralized view of active security alerts for triage and
+//   incident response. Correlate with resource activity.
+// EXAM TIP: Defender for Cloud (formerly Azure Security Center) offers
+//   free foundational CSPM and paid Defender plans per resource type.
+//   AZ-305 tests on selecting the right Defender plan per workload.
+// ---------------------------------------------------------------------------
+SecurityAlert
+| where TimeGenerated > ago(7d)
+| where AlertSeverity in ("High", "Medium")
+| summarize
+    AlertCount = count(),
+    MostRecent = max(TimeGenerated)
+    by AlertName, AlertSeverity, ProviderName, CompromisedEntity
+| order by AlertSeverity asc, AlertCount desc
+
+// ---------------------------------------------------------------------------
+// B5: Suspicious Identity Activity - Impossible Travel Detection
+// WHEN TO USE: Detect sign-ins from geographically distant locations within
+//   an impossible travel timeframe, indicating credential compromise.
+// EXAM TIP: Entra ID Identity Protection provides built-in impossible
+//   travel detection (P2 license). This KQL query is useful for custom
+//   detection rules in Microsoft Sentinel.
+// ---------------------------------------------------------------------------
+SigninLogs
+| where ResultType == "0"  // Successful sign-ins only
+| where TimeGenerated > ago(24h)
+| project TimeGenerated, UserPrincipalName, IPAddress, Location, LocationDetails
+| extend City = tostring(LocationDetails.city), Country = tostring(LocationDetails.countryOrRegion)
+| sort by UserPrincipalName asc, TimeGenerated asc
+| serialize
+| extend PrevTime = prev(TimeGenerated), PrevCity = prev(City), PrevUser = prev(UserPrincipalName)
+| where UserPrincipalName == PrevUser
+| extend TimeDiffMinutes = datetime_diff('minute', TimeGenerated, PrevTime)
+| where TimeDiffMinutes < 60 and City != PrevCity and isnotempty(City) and isnotempty(PrevCity)
+| project TimeGenerated, UserPrincipalName, City, PrevCity, TimeDiffMinutes, IPAddress
+
+
+// ============================================================================
+// SECTION C: APPLICATION PERFORMANCE
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// C1: Request Duration Percentiles (Application Insights)
+// WHEN TO USE: Identify slow endpoints for performance optimization.
+//   Percentiles prevent mean-value masking of tail latency problems.
+// EXAM TIP: Application Insights uses workspace-based storage by default.
+//   Data flows into the AppRequests table in Log Analytics. For AZ-305,
+//   always recommend workspace-based Application Insights (not classic).
+// ---------------------------------------------------------------------------
+AppRequests
+| where TimeGenerated > ago(24h)
+| summarize
+    P50Duration = percentile(DurationMs, 50),
+    P95Duration = percentile(DurationMs, 95),
+    P99Duration = percentile(DurationMs, 99),
+    RequestCount = count(),
+    FailureCount = countif(Success == false)
+    by Name, bin(TimeGenerated, 1h)
+| where P95Duration > 2000  // Flag endpoints slower than 2 seconds at p95
+| order by P95Duration desc
+
+// ---------------------------------------------------------------------------
+// C2: Failed Requests by Endpoint
+// WHEN TO USE: Prioritize debugging effort on the most-failing endpoints.
+//   Combine with dependency failures to isolate root cause.
+// EXAM TIP: Application Insights automatically collects HTTP status codes.
+//   5xx errors indicate server-side issues; 4xx may indicate client bugs
+//   or authorization misconfigurations.
+// ---------------------------------------------------------------------------
+AppRequests
+| where TimeGenerated > ago(24h)
+| where Success == false
+| summarize
+    FailureCount = count(),
+    DistinctStatusCodes = make_set(ResultCode),
+    AvgDurationMs = avg(DurationMs)
+    by Name, CloudRoleName
+| where FailureCount > 5
+| order by FailureCount desc
+
+// ---------------------------------------------------------------------------
+// C3: Dependency Call Failures (SQL, HTTP, Azure Services)
+// WHEN TO USE: Identify downstream service degradation causing application
+//   errors. Critical for microservices and distributed architectures.
+// EXAM TIP: Application Insights tracks dependencies automatically for
+//   SQL, HTTP, Azure Storage, and Service Bus. Custom dependencies require
+//   manual TelemetryClient.TrackDependency() calls or OpenTelemetry spans.
+// ---------------------------------------------------------------------------
+AppDependencies
+| where TimeGenerated > ago(24h)
+| where Success == false
+| summarize
+    FailureCount = count(),
+    AvgDurationMs = avg(DurationMs),
+    DistinctTargets = dcount(Target)
+    by DependencyType, Name, Target, ResultCode
+| order by FailureCount desc
+
+// ---------------------------------------------------------------------------
+// C4: Custom Availability Test Results
+// WHEN TO USE: Monitor web app uptime from multiple geographic locations.
+//   Availability tests are the foundation of external SLA measurement.
+// EXAM TIP: Standard availability tests (URL ping) are free in Application
+//   Insights. Custom TrackAvailability tests (multi-step) require code.
+//   AZ-305 may test on choosing between standard vs. custom tests.
+// ---------------------------------------------------------------------------
+AppAvailabilityResults
+| where TimeGenerated > ago(7d)
+| summarize
+    SuccessRate = round(100.0 * countif(Success == true) / count(), 2),
+    AvgDurationMs = avg(DurationMs),
+    TotalTests = count()
+    by Name, Location, bin(TimeGenerated, 1d)
+| where SuccessRate < 99.9
+| order by SuccessRate asc
+
+// ---------------------------------------------------------------------------
+// C5: Exception Trending Over Time
+// WHEN TO USE: Detect emerging issues before they become outages. A spike
+//   in exception volume often precedes user-facing failures.
+// EXAM TIP: AppExceptions (formerly exceptions) table captures unhandled
+//   exceptions. Combine with deployment markers (AppEvents) to correlate
+//   exception spikes with releases.
+// ---------------------------------------------------------------------------
+AppExceptions
+| where TimeGenerated > ago(7d)
+| summarize ExceptionCount = count() by ExceptionType = type, bin(TimeGenerated, 1h)
+| order by TimeGenerated desc, ExceptionCount desc
+
+
+// ============================================================================
+// SECTION D: COST AND GOVERNANCE
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// D1: Resource Creation and Deletion Activity
+// WHEN TO USE: Audit infrastructure changes for compliance and cost control.
+//   Detect unauthorized resource provisioning outside change windows.
+// EXAM TIP: AzureActivity logs are free and retained for 90 days in the
+//   Activity Log blade. Streaming to Log Analytics enables longer retention
+//   and cross-resource correlation. AZ-305 tests on log retention strategies.
+// ---------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where OperationNameValue has_any ("Microsoft.Resources/deployments/write",
+    "Microsoft.Compute/virtualMachines/write", "Microsoft.Sql/servers/write")
+| where ActivityStatusValue == "Success"
+| project TimeGenerated, Caller, OperationNameValue, ResourceGroup,
+    _ResourceId, SubscriptionId
+| order by TimeGenerated desc
+
+// ---------------------------------------------------------------------------
+// D2: Azure Policy Compliance State Changes
+// WHEN TO USE: Track policy drift -- when resources become non-compliant
+//   after initial deployment. Essential for governance reporting.
+// EXAM TIP: Azure Policy evaluates on resource creation, update, and via
+//   periodic compliance scans (every 24h). For AZ-305, recommend
+//   DeployIfNotExists and Modify effects for auto-remediation.
+// ---------------------------------------------------------------------------
+AzureActivity
+| where OperationNameValue == "Microsoft.PolicyInsights/policyStates/queryResults/action"
+    or OperationNameValue has "Microsoft.Authorization/policyAssignments"
+| where TimeGenerated > ago(7d)
+| project TimeGenerated, Caller, OperationNameValue, Properties_d, ResourceGroup
+| order by TimeGenerated desc
+
+// ---------------------------------------------------------------------------
+// D3: Tag Compliance Audit
+// WHEN TO USE: Identify resources missing required tags (CostCenter, Owner,
+//   Environment). Tag enforcement is the foundation of cost allocation.
+// EXAM TIP: Use Azure Policy with "Require a tag and its value" built-in
+//   policy for enforcement. Use Resource Graph (not KQL) for real-time
+//   tag inventory across subscriptions. This query audits tagging activity.
+// ---------------------------------------------------------------------------
+AzureActivity
+| where OperationNameValue has "Microsoft.Resources/tags/write"
+| where TimeGenerated > ago(30d)
+| summarize TagOperations = count() by Caller, ResourceGroup, bin(TimeGenerated, 1d)
+| order by TimeGenerated desc
+
+// ---------------------------------------------------------------------------
+// D4: Idle Resource Detection via Low Activity
+// WHEN TO USE: Identify VMs with consistently low CPU that could be
+//   deallocated, resized, or migrated to serverless.
+// EXAM TIP: Azure Advisor provides built-in right-sizing recommendations.
+//   This KQL query offers custom thresholds. For AZ-305, recommend Advisor +
+//   Azure Monitor alerts for comprehensive cost optimization.
+// ---------------------------------------------------------------------------
+Perf
+| where ObjectName == "Processor" and CounterName == "% Processor Time"
+| where InstanceName == "_Total"
+| where TimeGenerated > ago(7d)
+| summarize AvgCPU = avg(CounterValue), MaxCPU = max(CounterValue) by Computer
+| where AvgCPU < 5 and MaxCPU < 20
+| project Computer, AvgCPU = round(AvgCPU, 2), MaxCPU = round(MaxCPU, 2)
+| order by AvgCPU asc
+
+
+// ============================================================================
+// SECTION E: DATA PLATFORM MONITORING
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// E1: Azure SQL Database DTU / vCore Consumption
+// WHEN TO USE: Identify databases approaching capacity limits, plan tier
+//   upgrades, or validate right-sizing after migration.
+// EXAM TIP: DTU model bundles CPU/IO/memory. vCore model allows independent
+//   scaling. AZ-305 tests on choosing between DTU vs. vCore. Use vCore for
+//   predictable workloads needing fine-grained control; DTU for simplicity.
+// ---------------------------------------------------------------------------
+AzureMetrics
+| where ResourceProvider == "MICROSOFT.SQL"
+| where MetricName in ("dtu_consumption_percent", "cpu_percent", "storage_percent")
+| where TimeGenerated > ago(24h)
+| summarize
+    AvgValue = avg(Average),
+    MaxValue = max(Maximum)
+    by Resource, MetricName, bin(TimeGenerated, 1h)
+| where MaxValue > 80
+| order by MaxValue desc
+
+// ---------------------------------------------------------------------------
+// E2: Cosmos DB RU Consumption and Throttling (429 Errors)
+// WHEN TO USE: Detect hot partitions and insufficient throughput provisioning.
+//   429 errors directly impact application latency and user experience.
+// EXAM TIP: Cosmos DB offers provisioned throughput (manual/autoscale) and
+//   serverless. AZ-305 tests on choosing the right capacity mode. Autoscale
+//   handles spiky workloads; provisioned is cheaper for predictable loads.
+// ---------------------------------------------------------------------------
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.DOCUMENTDB"
+| where TimeGenerated > ago(24h)
+| where statusCode_s == "429"
+| summarize
+    ThrottledRequests = count(),
+    AvgRequestCharge = avg(todouble(requestCharge_s))
+    by Resource, databaseName_s, collectionName_s, bin(TimeGenerated, 15m)
+| order by ThrottledRequests desc
+
+// ---------------------------------------------------------------------------
+// E3: Storage Account Transaction Patterns
+// WHEN TO USE: Analyze access patterns for tier optimization (Hot, Cool,
+//   Cold, Archive) and detect unusual activity.
+// EXAM TIP: Storage lifecycle management policies automate tiering based
+//   on last access time. AZ-305 recommends enabling access tracking and
+//   lifecycle policies for cost optimization on large data lakes.
+// ---------------------------------------------------------------------------
+AzureMetrics
+| where ResourceProvider == "MICROSOFT.STORAGE"
+| where MetricName == "Transactions"
+| where TimeGenerated > ago(7d)
+| summarize TotalTransactions = sum(Total) by Resource, bin(TimeGenerated, 1d)
+| order by TotalTransactions desc
+
+// ---------------------------------------------------------------------------
+// E4: Data Factory Pipeline Run Success/Failure Rates
+// WHEN TO USE: Monitor ETL/ELT pipeline reliability. Frequent failures
+//   indicate data quality issues, source connectivity problems, or
+//   insufficient integration runtime capacity.
+// EXAM TIP: Data Factory supports Azure Integration Runtime (cloud),
+//   Self-hosted IR (on-premises/private network), and Azure-SSIS IR.
+//   AZ-305 tests on choosing the right IR type for hybrid scenarios.
+// ---------------------------------------------------------------------------
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.DATAFACTORY"
+| where Category == "PipelineRuns"
+| where TimeGenerated > ago(7d)
+| summarize
+    TotalRuns = count(),
+    Succeeded = countif(status_s == "Succeeded"),
+    Failed = countif(status_s == "Failed"),
+    Cancelled = countif(status_s == "Cancelled")
+    by pipelineName_s, Resource, bin(TimeGenerated, 1d)
+| extend SuccessRate = round(100.0 * Succeeded / TotalRuns, 2)
+| where SuccessRate < 100
+| order by SuccessRate asc
+
+
+// ============================================================================
+// SECTION F: ADVANCED PATTERNS
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// F1: Cross-Resource Join - VM Performance + Application Insights
+// WHEN TO USE: Correlate infrastructure metrics with application behavior.
+//   Essential for root-cause analysis when slow requests coincide with
+//   high CPU or memory pressure on the hosting VM.
+// EXAM TIP: Cross-resource queries use the workspace() or app() functions.
+//   All data must reside in the same Log Analytics workspace (workspace-based
+//   Application Insights) or use cross-workspace queries for federation.
+// ---------------------------------------------------------------------------
+Perf
+| where ObjectName == "Processor" and CounterName == "% Processor Time"
+| where InstanceName == "_Total"
+| where TimeGenerated > ago(4h)
+| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)
+| join kind=inner (
+    AppRequests
+    | where TimeGenerated > ago(4h)
+    | summarize P95Latency = percentile(DurationMs, 95), Requests = count()
+        by CloudRoleInstance, bin(TimeGenerated, 5m)
+) on $left.Computer == $right.CloudRoleInstance, TimeGenerated
+| project TimeGenerated, Computer, AvgCPU, P95Latency, Requests
+
+// ---------------------------------------------------------------------------
+// F2: Time Series Analysis with make-series and render
+// WHEN TO USE: Visualize trends, detect seasonality, and create baselines
+//   for anomaly detection. make-series fills gaps with defaults for
+//   consistent time buckets.
+// EXAM TIP: make-series is required for time series functions like
+//   series_decompose_anomalies(). It differs from summarize+bin() because
+//   it fills missing time slots with a default value (critical for ML).
+// ---------------------------------------------------------------------------
+AppRequests
+| where TimeGenerated > ago(7d)
+| make-series RequestCount = count() default=0
+    on TimeGenerated from ago(7d) to now() step 1h
+| render timechart with (title="Hourly Request Volume - 7 Day Trend")
+
+// ---------------------------------------------------------------------------
+// F3: Anomaly Detection with series_decompose_anomalies()
+// WHEN TO USE: Automatically detect unusual spikes or dips in metrics
+//   without manually defining static thresholds. Ideal for dynamic
+//   environments where baselines shift over time.
+// EXAM TIP: series_decompose_anomalies() uses STL decomposition to separate
+//   trend, seasonality, and residual components. The anomaly score indicates
+//   direction (+1 = spike, -1 = dip, 0 = normal). AZ-305 favors dynamic
+//   thresholds over static thresholds for production alert rules.
+// ---------------------------------------------------------------------------
+AppRequests
+| where TimeGenerated > ago(14d)
+| make-series RequestCount = count() default=0
+    on TimeGenerated from ago(14d) to now() step 1h
+| extend (anomalies, score, baseline) = series_decompose_anomalies(RequestCount, 1.5, -1, 'linefit')
+| mv-expand TimeGenerated to typeof(datetime), RequestCount to typeof(long),
+    anomalies to typeof(int), score to typeof(double), baseline to typeof(long)
+| where anomalies != 0
+| project TimeGenerated, RequestCount, baseline, anomalies, score
+
+// ---------------------------------------------------------------------------
+// F4: Dynamic Thresholds Using Percentile Over Time
+// WHEN TO USE: Create alert thresholds that automatically adapt to
+//   workload patterns. Static thresholds generate noise on variable workloads.
+// EXAM TIP: Azure Monitor smart detection and dynamic thresholds in alert
+//   rules use similar ML approaches. For AZ-305, recommend dynamic
+//   threshold metric alerts for production workloads with variable baselines.
+// ---------------------------------------------------------------------------
+Perf
+| where ObjectName == "Processor" and CounterName == "% Processor Time"
+| where InstanceName == "_Total"
+| where TimeGenerated between (ago(14d) .. ago(1d))  // Training window
+| summarize
+    BaselineP95 = percentile(CounterValue, 95),
+    BaselineP50 = percentile(CounterValue, 50)
+    by Computer
+| join kind=inner (
+    Perf
+    | where ObjectName == "Processor" and CounterName == "% Processor Time"
+    | where InstanceName == "_Total"
+    | where TimeGenerated > ago(1h)  // Current window
+    | summarize CurrentAvg = avg(CounterValue) by Computer
+) on Computer
+| where CurrentAvg > BaselineP95
+| project Computer, CurrentAvg = round(CurrentAvg, 2),
+    BaselineP50 = round(BaselineP50, 2), BaselineP95 = round(BaselineP95, 2)
+
+// ---------------------------------------------------------------------------
+// F5: Time Bucketing with bin() for Operational Dashboards
+// WHEN TO USE: Build Azure Workbook visualizations showing operational
+//   health over time. bin() creates consistent time intervals for charts.
+// EXAM TIP: Azure Workbooks are the recommended visualization tool for
+//   Log Analytics data. They replace legacy View Designer. For AZ-305,
+//   recommend Workbooks for operational dashboards and Power BI for
+//   executive/business dashboards with longer data retention.
+// ---------------------------------------------------------------------------
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where CategoryValue == "Administrative"
+| summarize OperationCount = count() by Caller, bin(TimeGenerated, 1d)
+| order by TimeGenerated desc, OperationCount desc
+
+// ---------------------------------------------------------------------------
+// F6: Union Across Tables for Holistic Security View
+// WHEN TO USE: Create a single-pane security dashboard combining identity,
+//   network, and resource activity signals for SOC analysts.
+// EXAM TIP: Microsoft Sentinel uses these same tables plus custom connectors.
+//   For AZ-305, recommend Sentinel for SIEM/SOAR when security operations
+//   require automated incident response and threat hunting workbooks.
+// ---------------------------------------------------------------------------
+union
+    (SigninLogs
+    | where ResultType != "0" and TimeGenerated > ago(1h)
+    | summarize Count = count() by Source = "FailedSignIns", Severity = "High"),
+    (SecurityAlert
+    | where TimeGenerated > ago(1h)
+    | summarize Count = count() by Source = "SecurityAlerts", Severity = AlertSeverity),
+    (AzureActivity
+    | where TimeGenerated > ago(1h) and CategoryValue == "Administrative"
+    | where OperationNameValue has "delete"
+    | summarize Count = count() by Source = "ResourceDeletions", Severity = "Medium")
+| order by Severity asc, Count desc
+
+// ============================================================================
+// END OF FILE
+// Reference: https://learn.microsoft.com/azure/azure-monitor/reference/tables/
+// ============================================================================
