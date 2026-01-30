@@ -6,10 +6,10 @@
       "value": "contoso-apis"
     },
     "location": {
-      "value": "eastus"
+      "value": "eastus2"
     },
     "publisherEmail": {
-      "value": "api-team@contoso.com"
+      "value": "tim@techtrainertim.com"
     },
     "publisherName": {
       "value": "Contoso Corporation"
@@ -39,10 +39,62 @@
       "value": true
     },
     "deploySampleApi": {
-      "value": false
+      "value": true
     },
     "sampleApiBackendUrl": {
       "value": "https://httpbin.org"
+    },
+    "entraIdTenantId": {
+      "metadata": {
+        "description": "Replace with your Microsoft Entra ID tenant ID (GUID). Leave empty to skip JWT validation."
+      },
+      "value": ""
+    },
+    "entraIdAudienceAppId": {
+      "metadata": {
+        "description": "Replace with the Application (client) ID of your API app registration in Microsoft Entra ID."
+      },
+      "value": ""
+    },
+    "allowedIpRanges": {
+      "metadata": {
+        "description": "RFC 1918 private ranges by default. Replace with your corporate IP ranges for production. Each entry requires 'from' and 'to' properties."
+      },
+      "value": [
+        { "from": "10.0.0.0", "to": "10.255.255.255" },
+        { "from": "172.16.0.0", "to": "172.31.255.255" },
+        { "from": "192.168.0.0", "to": "192.168.255.255" }
+      ]
+    },
+    "allowedCorsOrigins": {
+      "metadata": {
+        "description": "Allowed origins for CORS. Replace with your actual SPA frontend URLs."
+      },
+      "value": [
+        "https://portal.contoso.com",
+        "https://app.contoso.com"
+      ]
+    },
+    "rateLimitCalls": {
+      "value": 50
+    },
+    "rateLimitPeriodSeconds": {
+      "value": 60
+    },
+    "rateLimitAnonymousCalls": {
+      "value": 20
+    },
+    "rateLimitAnonymousPeriodSeconds": {
+      "value": 60
+    },
+    "quotaDailyCalls": {
+      "value": 1000
+    },
+    "quotaDailyBandwidthKB": {
+      "value": 51200
+    },
+    "cacheDurationSeconds": {
+      "value": 300
     },
     "tags": {
       "value": {

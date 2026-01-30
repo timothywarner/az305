@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "namePrefix": {
+      "value": "contoso"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "adminUsername": {
+      "value": "azureadmin"
+    },
+    "allowedSourceIP": {
+      "value": "162.230.15.134/32"
+    },
+    "vnetAddressPrefix": {
+      "value": "10.10.0.0/16"
+    },
+    "webSubnetPrefix": {
+      "value": "10.10.1.0/24"
+    },
+    "appSubnetPrefix": {
+      "value": "10.10.2.0/24"
+    },
+    "spotSubnetPrefix": {
+      "value": "10.10.3.0/24"
+    },
+    "vmssSubnetPrefix": {
+      "value": "10.10.4.0/24"
+    },
+    "tags": {
+      "value": {
+        "environment": "demo",
+        "purpose": "az305-compute-fleet",
+        "examObjective": "AZ-305-Domain4-Compute",
+        "owner": "contoso-training",
+        "deleteAfter": "demo-complete"
+      }
+    }
+  }
+}

@@ -4,17 +4,20 @@
 
 ---
 
+## Cross-Cutting: Weave Into Every Segment
+
+- [ ] **Well-Architected Framework**: Reliability, Security, Cost, Operational Excellence, Performance
+- [ ] **Zero Trust**: verify explicitly, least privilege, assume breach
+- [ ] **Managed Identity**: use everywhere instead of secrets/keys
+- [ ] **Cost optimization**: right-size, reserved instances, serverless, scale-to-zero
+- [ ] **Microsoft Entra ID** terminology throughout (not "Azure AD")
+
+---
+
 ## Segment 1: Identity, Governance & Monitoring (25-30%)
 
-### Monitoring (1.1)
-- [ ] Log Analytics workspace design: centralized vs distributed
-- [ ] Diagnostic settings: route logs to LAW, Event Hub, Storage
-- [ ] Azure Monitor: metrics, alerts, action groups
-- [ ] Application Insights (workspace-based)
-- [ ] Log retention tiers: interactive (2yr max) + archive (12yr total)
-- [ ] KQL query basics -- show live in law-az305
+### Authentication & Authorization (1.1)
 
-### Authentication & Authorization (1.2)
 - [ ] Microsoft Entra ID auth methods: MFA, passwordless (FIDO2, Authenticator)
 - [ ] Conditional Access policies
 - [ ] Microsoft Entra External ID: B2B (partners) vs B2C (consumers)
@@ -24,7 +27,8 @@
 - [ ] Microsoft Entra Privileged Identity Management (PIM): just-in-time elevation
 - [ ] Key Vault: Standard vs Premium, RBAC mode, managed identity access, rotation
 
-### Governance (1.3)
+### Governance (1.2)
+
 - [ ] Management group → subscription → resource group hierarchy
 - [ ] Tagging taxonomy and enforcement via Policy
 - [ ] Azure Policy: effects (audit, deny, deployIfNotExists, modify)
@@ -33,11 +37,21 @@
 - [ ] Microsoft Defender for Cloud compliance scoring
 - [ ] Identity governance: access reviews, entitlement management, lifecycle workflows
 
+### Monitoring (1.3)
+
+- [ ] Log Analytics workspace design: centralized vs distributed
+- [ ] Diagnostic settings: route logs to LAW, Event Hub, Storage
+- [ ] Azure Monitor: metrics, alerts, action groups
+- [ ] Application Insights (workspace-based)
+- [ ] Log retention tiers: interactive (2yr max) + archive (12yr total)
+- [ ] KQL query basics -- show live in law-az305
+
 ---
 
 ## Segment 2: Data Storage Solutions (20-25%)
 
 ### Relational Data (2.1)
+
 - [ ] SQL Database vs SQL Managed Instance vs SQL Server on VM decision
 - [ ] DTU vs vCore purchasing models
 - [ ] Serverless vs provisioned compute (show sqldb-az305-demo auto-pause)
@@ -47,6 +61,7 @@
 - [ ] Microsoft Defender for SQL
 
 ### Semi-Structured & Unstructured Data (2.2)
+
 - [ ] Cosmos DB: API selection (NoSQL, MongoDB, Cassandra, Gremlin, Table)
 - [ ] Cosmos DB: consistency levels (strong → eventual, Session = default sweet spot)
 - [ ] Cosmos DB: partition key strategy (high cardinality, even distribution)
@@ -60,6 +75,7 @@
 - [ ] Soft delete + versioning
 
 ### Data Integration (2.3)
+
 - [ ] Azure Data Factory vs Synapse pipelines (same engine, different scope)
 - [ ] Integration runtimes: Azure, self-hosted, Azure-SSIS
 - [ ] Azure Synapse Analytics: serverless SQL, dedicated pools, Spark
@@ -72,6 +88,7 @@
 ## Segment 3: Business Continuity & High Availability (15-20%)
 
 ### Backup & DR (3.1)
+
 - [ ] RTO vs RPO: translate business requirements to technical design
 - [ ] Azure Backup: Recovery Services vault vs Backup vault
 - [ ] VM backup: application-consistent vs crash-consistent snapshots
@@ -83,6 +100,7 @@
 - [ ] Blob: soft delete, versioning, point-in-time restore, object replication
 
 ### High Availability (3.2)
+
 - [ ] Availability Sets (fault/update domains) vs Availability Zones vs VMSS
 - [ ] VM SLA ladder: single (99.9%) → AvSet (99.95%) → AZ (99.99%)
 - [ ] SQL Database zone redundancy (all vCore tiers; Hyperscale needs premium-series)
@@ -96,6 +114,7 @@
 ## Segment 4: Compute & Application Architecture (~17% of Infrastructure)
 
 ### Compute Solutions (4.1)
+
 - [ ] Compute decision tree: VM → Container Apps → AKS → Functions → Batch
 - [ ] VM sizes/series, VMSS auto-scale, Spot VMs
 - [ ] Dedicated hosts, proximity placement groups
@@ -107,6 +126,7 @@
 - [ ] Azure Batch / CycleCloud for HPC
 
 ### Application Architecture (4.2)
+
 - [ ] Messaging: Service Bus (queues/topics) vs Queue Storage (show sb-az305-tw)
 - [ ] Events: Event Grid (reactive) vs Event Hubs (streaming) -- decision matrix
 - [ ] API Management: tiers, policies, rate limiting (show warnerco-apim)
@@ -120,6 +140,7 @@
 ## Segment 5: Networking & Migrations (~18% of Infrastructure)
 
 ### Network Solutions (4.4)
+
 - [ ] Hub-spoke topology with peering (show vnet-win ↔ vnet-linux)
 - [ ] VPN Gateway (S2S) vs ExpressRoute (private peering, Microsoft peering)
 - [ ] ExpressRoute Global Reach, Virtual WAN (>10 spokes or SD-WAN)
@@ -134,6 +155,7 @@
 - [ ] Network Watcher diagnostics
 
 ### Migrations (4.3)
+
 - [ ] Cloud Adoption Framework phases: Strategy → Plan → Ready → Adopt → Govern → Manage
 - [ ] Azure Migrate: discovery, assessment, dependency analysis
 - [ ] TCO Calculator
@@ -144,11 +166,3 @@
 - [ ] AzCopy, Storage Explorer, Azure File Sync
 
 ---
-
-## Cross-Cutting: Weave Into Every Segment
-
-- [ ] **Well-Architected Framework**: Reliability, Security, Cost, Operational Excellence, Performance
-- [ ] **Zero Trust**: verify explicitly, least privilege, assume breach
-- [ ] **Managed Identity**: use everywhere instead of secrets/keys
-- [ ] **Cost optimization**: right-size, reserved instances, serverless, scale-to-zero
-- [ ] **Microsoft Entra ID** terminology throughout (not "Azure AD")

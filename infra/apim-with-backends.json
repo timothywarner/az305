@@ -1,0 +1,654 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.35.1.17967",
+      "templateHash": "523193861668118637"
+    }
+  },
+  "parameters": {
+    "apimName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50,
+      "metadata": {
+        "description": "Name of the API Management service."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for the service."
+      }
+    },
+    "publisherEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Publisher email address."
+      }
+    },
+    "publisherName": {
+      "type": "string",
+      "metadata": {
+        "description": "Publisher organization name."
+      }
+    },
+    "sku": {
+      "type": "string",
+      "defaultValue": "Developer",
+      "allowedValues": [
+        "Consumption",
+        "Developer",
+        "Basic",
+        "Standard",
+        "Premium"
+      ],
+      "metadata": {
+        "description": "API Management SKU."
+      }
+    },
+    "skuCount": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "maxValue": 12,
+      "metadata": {
+        "description": "Number of scale units (only for non-Consumption SKUs)."
+      }
+    },
+    "virtualNetworkType": {
+      "type": "string",
+      "defaultValue": "None",
+      "allowedValues": [
+        "None",
+        "External",
+        "Internal"
+      ],
+      "metadata": {
+        "description": "Enable virtual network integration."
+      }
+    },
+    "vnetId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Virtual network resource ID (required for VNet integration)."
+      }
+    },
+    "apimSubnetName": {
+      "type": "string",
+      "defaultValue": "ApiManagement",
+      "metadata": {
+        "description": "Subnet name for APIM (required for VNet integration)."
+      }
+    },
+    "enableAvailabilityZones": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable availability zones (Premium SKU only)."
+      }
+    },
+    "applicationInsightsId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Application Insights resource ID."
+      }
+    },
+    "applicationInsightsKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Application Insights instrumentation key."
+      }
+    },
+    "enableManagedIdentity": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable system-assigned managed identity."
+      }
+    },
+    "deploySampleApi": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Deploy sample API with comprehensive policies."
+      }
+    },
+    "sampleApiBackendUrl": {
+      "type": "string",
+      "defaultValue": "https://httpbin.org",
+      "metadata": {
+        "description": "Backend API URL for sample API."
+      }
+    },
+    "entraIdTenantId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Entra ID tenant ID for JWT validation."
+      }
+    },
+    "entraIdAudienceAppId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Entra ID application (client) ID representing the API audience."
+      }
+    },
+    "allowedIpRanges": {
+      "type": "array",
+      "defaultValue": [
+        {
+          "from": "10.0.0.0",
+          "to": "10.255.255.255"
+        },
+        {
+          "from": "172.16.0.0",
+          "to": "172.31.255.255"
+        },
+        {
+          "from": "192.168.0.0",
+          "to": "192.168.255.255"
+        }
+      ],
+      "metadata": {
+        "description": "Allowed IP address ranges for IP filtering. Each entry needs \"from\" and \"to\" properties defining the range start and end."
+      }
+    },
+    "allowedCorsOrigins": {
+      "type": "array",
+      "defaultValue": [
+        "https://portal.contoso.com",
+        "https://app.contoso.com"
+      ],
+      "metadata": {
+        "description": "Allowed CORS origins for cross-origin requests from SPA frontends."
+      }
+    },
+    "rateLimitCalls": {
+      "type": "int",
+      "defaultValue": 50,
+      "metadata": {
+        "description": "Rate limit: max calls per renewal period per subscription key."
+      }
+    },
+    "rateLimitPeriodSeconds": {
+      "type": "int",
+      "defaultValue": 60,
+      "metadata": {
+        "description": "Rate limit: renewal period in seconds."
+      }
+    },
+    "rateLimitAnonymousCalls": {
+      "type": "int",
+      "defaultValue": 20,
+      "metadata": {
+        "description": "Rate limit for anonymous (IP-based) access: max calls per renewal period."
+      }
+    },
+    "rateLimitAnonymousPeriodSeconds": {
+      "type": "int",
+      "defaultValue": 60,
+      "metadata": {
+        "description": "Rate limit for anonymous (IP-based) access: renewal period in seconds."
+      }
+    },
+    "quotaDailyCalls": {
+      "type": "int",
+      "defaultValue": 1000,
+      "metadata": {
+        "description": "Daily quota: max calls per subscription per day."
+      }
+    },
+    "quotaDailyBandwidthKB": {
+      "type": "int",
+      "defaultValue": 51200,
+      "metadata": {
+        "description": "Daily quota: max bandwidth in KB per subscription per day."
+      }
+    },
+    "cacheDurationSeconds": {
+      "type": "int",
+      "defaultValue": 300,
+      "metadata": {
+        "description": "Cache duration in seconds for GET responses."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "environment": "production",
+        "purpose": "api-management",
+        "examObjective": "AZ-305-Application"
+      },
+      "metadata": {
+        "description": "Tags to apply to resources."
+      }
+    }
+  },
+  "variables": {
+    "apimServiceName": "[format('apim-{0}-{1}', parameters('apimName'), uniqueString(resourceGroup().id))]",
+    "zones": "[if(and(parameters('enableAvailabilityZones'), equals(parameters('sku'), 'Premium')), createArray('1', '2', '3'), createArray())]",
+    "entraIdOpenIdConfigUrl": "[if(not(empty(parameters('entraIdTenantId'))), format('https://login.microsoftonline.com/{0}/v2.0/.well-known/openid-configuration', parameters('entraIdTenantId')), '')]",
+    "corsOriginsXml": "[join(map(parameters('allowedCorsOrigins'), lambda('origin', format('<origin>{0}</origin>', lambdaVariables('origin')))), '\n              ')]",
+    "ipFilterXml": "[join(map(parameters('allowedIpRanges'), lambda('range', format('<address-range from=\"{0}\" to=\"{1}\" />', lambdaVariables('range').from, lambdaVariables('range').to))), '\n      ')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ApiManagement/service",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[variables('apimServiceName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "sku": {
+        "name": "[parameters('sku')]",
+        "capacity": "[if(equals(parameters('sku'), 'Consumption'), 0, parameters('skuCount'))]"
+      },
+      "identity": "[if(parameters('enableManagedIdentity'), createObject('type', 'SystemAssigned'), null())]",
+      "zones": "[variables('zones')]",
+      "properties": {
+        "publisherEmail": "[parameters('publisherEmail')]",
+        "publisherName": "[parameters('publisherName')]",
+        "virtualNetworkType": "[parameters('virtualNetworkType')]",
+        "virtualNetworkConfiguration": "[if(and(not(equals(parameters('virtualNetworkType'), 'None')), not(empty(parameters('vnetId')))), createObject('subnetResourceId', format('{0}/subnets/{1}', parameters('vnetId'), parameters('apimSubnetName'))), null())]",
+        "customProperties": {
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Ssl30": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Ciphers.TripleDes168": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "True"
+        },
+        "apiVersionConstraint": {
+          "minApiVersion": "2021-08-01"
+        }
+      },
+      "metadata": {
+        "description": "API Management service"
+      }
+    },
+    {
+      "condition": "[not(empty(parameters('applicationInsightsId')))]",
+      "type": "Microsoft.ApiManagement/service/loggers",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}', variables('apimServiceName'), 'applicationinsights')]",
+      "properties": {
+        "loggerType": "applicationInsights",
+        "resourceId": "[parameters('applicationInsightsId')]",
+        "credentials": {
+          "instrumentationKey": "[parameters('applicationInsightsKey')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]"
+      ],
+      "metadata": {
+        "description": "Application Insights logger"
+      }
+    },
+    {
+      "condition": "[not(empty(parameters('applicationInsightsId')))]",
+      "type": "Microsoft.ApiManagement/service/diagnostics",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}', variables('apimServiceName'), 'applicationinsights')]",
+      "properties": {
+        "alwaysLog": "allErrors",
+        "loggerId": "[resourceId('Microsoft.ApiManagement/service/loggers', variables('apimServiceName'), 'applicationinsights')]",
+        "sampling": {
+          "percentage": 100,
+          "samplingType": "fixed"
+        },
+        "frontend": {
+          "request": {
+            "headers": [],
+            "body": {
+              "bytes": 0
+            }
+          },
+          "response": {
+            "headers": [],
+            "body": {
+              "bytes": 0
+            }
+          }
+        },
+        "backend": {
+          "request": {
+            "headers": [],
+            "body": {
+              "bytes": 0
+            }
+          },
+          "response": {
+            "headers": [],
+            "body": {
+              "bytes": 0
+            }
+          }
+        },
+        "logClientIp": true,
+        "httpCorrelationProtocol": "W3C",
+        "verbosity": "information"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]",
+        "[resourceId('Microsoft.ApiManagement/service/loggers', variables('apimServiceName'), 'applicationinsights')]"
+      ],
+      "metadata": {
+        "description": "API diagnostic settings for Application Insights"
+      }
+    },
+    {
+      "condition": "[parameters('deploySampleApi')]",
+      "type": "Microsoft.ApiManagement/service/namedValues",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}', variables('apimServiceName'), 'backend-url')]",
+      "properties": {
+        "displayName": "backend-url",
+        "value": "[parameters('sampleApiBackendUrl')]",
+        "secret": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]"
+      ],
+      "metadata": {
+        "description": "Named value for backend URL"
+      }
+    },
+    {
+      "condition": "[parameters('deploySampleApi')]",
+      "type": "Microsoft.ApiManagement/service/backends",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}', variables('apimServiceName'), 'httpbin-backend')]",
+      "properties": {
+        "url": "[parameters('sampleApiBackendUrl')]",
+        "protocol": "http",
+        "title": "HTTPBin Backend",
+        "description": "Sample backend service for testing",
+        "tls": {
+          "validateCertificateChain": true,
+          "validateCertificateName": true
+        },
+        "circuitBreaker": {
+          "rules": [
+            {
+              "name": "default-circuit-breaker",
+              "failureCondition": {
+                "count": 5,
+                "interval": "PT1M",
+                "statusCodeRanges": [
+                  {
+                    "min": 500,
+                    "max": 599
+                  }
+                ]
+              },
+              "tripDuration": "PT1M"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]"
+      ],
+      "metadata": {
+        "description": "Backend service configuration"
+      }
+    },
+    {
+      "condition": "[parameters('deploySampleApi')]",
+      "type": "Microsoft.ApiManagement/service/apis",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}', variables('apimServiceName'), 'sample-api')]",
+      "properties": {
+        "displayName": "Sample API",
+        "description": "Sample API demonstrating APIM policies for AZ-305 exam preparation",
+        "subscriptionRequired": true,
+        "serviceUrl": "[parameters('sampleApiBackendUrl')]",
+        "path": "sample",
+        "protocols": [
+          "https"
+        ],
+        "apiVersion": "v1",
+        "apiVersionSetId": null,
+        "isCurrent": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]"
+      ],
+      "metadata": {
+        "description": "Sample API with comprehensive policy demonstrations"
+      }
+    },
+    {
+      "condition": "[parameters('deploySampleApi')]",
+      "type": "Microsoft.ApiManagement/service/apis/operations",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('apimServiceName'), 'sample-api', 'get-data')]",
+      "properties": {
+        "displayName": "Get Data",
+        "method": "GET",
+        "urlTemplate": "/get",
+        "description": "Returns GET data -- demonstrates caching and JWT validation",
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Success"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', variables('apimServiceName'), 'sample-api')]"
+      ],
+      "metadata": {
+        "description": "Sample API GET operation"
+      }
+    },
+    {
+      "condition": "[parameters('deploySampleApi')]",
+      "type": "Microsoft.ApiManagement/service/apis/operations",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('apimServiceName'), 'sample-api', 'health-check')]",
+      "properties": {
+        "displayName": "Health Check",
+        "method": "GET",
+        "urlTemplate": "/health",
+        "description": "Health probe endpoint -- returns mock 200 without calling backend",
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Service is healthy",
+            "representations": [
+              {
+                "contentType": "application/json",
+                "examples": {
+                  "default": {
+                    "value": "{\"status\":\"healthy\",\"service\":\"apim\",\"timestamp\":\"2026-01-30T00:00:00Z\"}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', variables('apimServiceName'), 'sample-api')]"
+      ],
+      "metadata": {
+        "description": "Health check operation returning mock 200 response"
+      }
+    },
+    {
+      "condition": "[parameters('deploySampleApi')]",
+      "type": "Microsoft.ApiManagement/service/apis/operations/policies",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}/{2}/{3}', variables('apimServiceName'), 'sample-api', 'health-check', 'policy')]",
+      "properties": {
+        "value": "<policies>\n  <inbound>\n    <base />\n    <!-- ================================================================= -->\n    <!-- POLICY 7: Mock Response                                           -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: mock-response returns a canned response    -->\n    <!-- without forwarding to the backend. Use cases:                      -->\n    <!--   1. Health probes for load balancers                             -->\n    <!--   2. API prototyping before backend is ready                      -->\n    <!--   3. Circuit breaker fallback responses                           -->\n    <!--                                                                   -->\n    <!-- status-code and content-type define the response shape.           -->\n    <!-- The response body can be defined inline or reference the          -->\n    <!-- operation response schema.                                        -->\n    <!-- ================================================================= -->\n    <mock-response status-code=\"200\" content-type=\"application/json\" />\n  </inbound>\n  <backend>\n    <!-- mock-response short-circuits here -- backend is never called -->\n    <base />\n  </backend>\n  <outbound>\n    <base />\n    <!-- Override the mock body with a dynamic timestamp -->\n    <set-body>@{\n      return new JObject(\n        new JProperty(\"status\", \"healthy\"),\n        new JProperty(\"service\", \"apim\"),\n        new JProperty(\"timestamp\", DateTime.UtcNow.ToString(\"o\"))\n      ).ToString();\n    }</set-body>\n  </outbound>\n  <on-error>\n    <base />\n  </on-error>\n</policies>",
+        "format": "xml"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis/operations', variables('apimServiceName'), 'sample-api', 'health-check')]"
+      ],
+      "metadata": {
+        "description": "Mock response policy for health endpoint"
+      }
+    },
+    {
+      "condition": "[parameters('deploySampleApi')]",
+      "type": "Microsoft.ApiManagement/service/apis/policies",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('apimServiceName'), 'sample-api', 'policy')]",
+      "properties": {
+        "value": "[format('<policies>\n  <inbound>\n    <!-- Inherit global policies first (CORS, rate limiting, correlation ID) -->\n    <base />\n\n    <!-- ================================================================= -->\n    <!-- POLICY 3 (API-level): IP Filtering (ip-filter)                    -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: IP filtering is a network security layer   -->\n    <!-- in the defense-in-depth model. The exam tests whether you know    -->\n    <!-- the difference between:                                           -->\n    <!--   - NSG rules (layer 4, subnet/NIC level)                        -->\n    <!--   - APIM ip-filter (layer 7, per-API granularity)                -->\n    <!--   - Azure Firewall (centralized, cross-service)                  -->\n    <!--                                                                   -->\n    <!-- action=\"allow\" = allow-list (deny all except listed)              -->\n    <!-- action=\"forbid\" = deny-list (allow all except listed)             -->\n    <!--                                                                   -->\n    <!-- Real-World: Use allow-list for internal APIs that should only be  -->\n    <!-- called from your VNet or known partner IPs. Combine with Private  -->\n    <!-- Endpoints for strongest network isolation.                        -->\n    <!-- ================================================================= -->\n    <ip-filter action=\"allow\">\n      {0}\n    </ip-filter>\n\n    <!-- ================================================================= -->\n    <!-- POLICY 4 (API-level): JWT Validation (validate-jwt)               -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: This is the MOST TESTED APIM policy on    -->\n    <!-- AZ-305. The exam presents scenarios where you must secure an API  -->\n    <!-- with Microsoft Entra ID and asks which policy to use.             -->\n    <!--                                                                   -->\n    <!-- Key concepts the exam tests:                                      -->\n    <!--   - header-name=\"Authorization\" extracts the Bearer token         -->\n    <!--   - openid-config auto-discovers signing keys (no manual rotation)-->\n    <!--   - required-claims enforces audience (aud) and custom claims     -->\n    <!--   - failed-validation-httpcode returns 401 (not 403)              -->\n    <!--   - clock-skew accounts for time drift between token issuer and   -->\n    <!--     APIM (300 seconds = 5 minutes is standard)                    -->\n    <!--                                                                   -->\n    <!-- Real-World: Always validate JWT at the gateway level (APIM)      -->\n    <!-- AND at the backend. This is the Zero Trust principle: never trust -->\n    <!-- never trust, always verify -- even internal traffic.              -->\n    <!-- ================================================================= -->\n    {1}\n\n    <!-- ================================================================= -->\n    <!-- POLICY 5 (API-level): Response Caching - Lookup Phase             -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: Caching is a Performance Efficiency        -->\n    <!-- pillar concern. The exam tests when to use:                        -->\n    <!--   - APIM internal cache (built-in, limited by SKU memory)        -->\n    <!--   - Azure Cache for Redis (external, shared across instances)     -->\n    <!--                                                                   -->\n    <!-- cache-lookup runs in inbound; cache-store runs in outbound.       -->\n    <!-- They work as a pair. If a cache hit occurs, the pipeline          -->\n    <!-- short-circuits and returns the cached response immediately --     -->\n    <!-- no backend call.                                                  -->\n    <!--                                                                   -->\n    <!-- vary-by-query-string=\"*\" means different query params = different -->\n    <!-- cache entries. vary-by-header on Authorization means each user    -->\n    <!-- gets their own cached response (important for personalized data). -->\n    <!-- ================================================================= -->\n    <cache-lookup vary-by-developer=\"false\" vary-by-developer-groups=\"false\" downstream-caching-type=\"none\">\n      <vary-by-query-string>*</vary-by-query-string>\n      <vary-by-header>Authorization</vary-by-header>\n      <vary-by-header>Accept</vary-by-header>\n    </cache-lookup>\n  </inbound>\n\n  <backend>\n    <base />\n  </backend>\n\n  <outbound>\n    <base />\n\n    <!-- ================================================================= -->\n    <!-- POLICY 5 (API-level): Response Caching - Store Phase              -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: cache-store duration controls how long     -->\n    <!-- responses are cached. Balance between freshness (low duration)    -->\n    <!-- and performance (high duration). 300 seconds (5 minutes) is a    -->\n    <!-- common default for read-heavy APIs.                               -->\n    <!--                                                                   -->\n    <!-- Real-World: Only cache GET requests. Never cache POST/PUT/DELETE -->\n    <!-- as these are state-changing operations.                           -->\n    <!-- ================================================================= -->\n    <cache-store duration=\"{2}\" />\n  </outbound>\n\n  <on-error>\n    <base />\n  </on-error>\n</policies>', variables('ipFilterXml'), if(not(empty(parameters('entraIdTenantId'))), format('<validate-jwt header-name=\"Authorization\" failed-validation-httpcode=\"401\" failed-validation-error-message=\"Unauthorized. Access token is missing or invalid.\" require-expiration-time=\"true\" require-signed-tokens=\"true\" clock-skew=\"300\">\n      <openid-config url=\"{0}\" />\n      <audiences>\n        <audience>{1}</audience>\n      </audiences>\n      <issuers>\n        <issuer>https://login.microsoftonline.com/{2}/v2.0</issuer>\n        <issuer>https://sts.windows.net/{3}/</issuer>\n      </issuers>\n      <required-claims>\n        <claim name=\"aud\" match=\"any\">\n          <value>{4}</value>\n        </claim>\n      </required-claims>\n    </validate-jwt>', variables('entraIdOpenIdConfigUrl'), parameters('entraIdAudienceAppId'), parameters('entraIdTenantId'), parameters('entraIdTenantId'), parameters('entraIdAudienceAppId')), '<!-- JWT validation disabled: entraIdTenantId parameter not set -->'), parameters('cacheDurationSeconds'))]",
+        "format": "xml"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', variables('apimServiceName'), 'sample-api')]"
+      ],
+      "metadata": {
+        "description": "API-level policy with JWT validation, caching, and IP filtering"
+      }
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/policies",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}', variables('apimServiceName'), 'policy')]",
+      "properties": {
+        "value": "[format('<policies>\n  <inbound>\n    <!-- ================================================================= -->\n    <!-- POLICY 1: CORS (Cross-Origin Resource Sharing)                    -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: When designing SPA + API architectures,    -->\n    <!-- you MUST configure CORS at the API gateway level. The exam tests  -->\n    <!-- whether you understand that CORS is enforced by browsers, not     -->\n    <!-- servers -- APIM sends the correct headers so browsers allow the   -->\n    <!-- cross-origin request.                                             -->\n    <!--                                                                   -->\n    <!-- Real-World: Never use origin=\"*\" in production. Always specify    -->\n    <!-- exact origins to prevent unauthorized sites from calling your API. -->\n    <!-- preflight-result-max-age caches OPTIONS responses in the browser  -->\n    <!-- reducing round-trips for subsequent requests.                     -->\n    <!-- ================================================================= -->\n    <cors allow-credentials=\"true\">\n      <allowed-origins>\n        {0}\n      </allowed-origins>\n      <allowed-methods preflight-result-max-age=\"600\">\n        <method>GET</method>\n        <method>POST</method>\n        <method>PUT</method>\n        <method>DELETE</method>\n        <method>PATCH</method>\n        <method>OPTIONS</method>\n      </allowed-methods>\n      <allowed-headers>\n        <header>Authorization</header>\n        <header>Content-Type</header>\n        <header>Accept</header>\n        <header>X-Correlation-ID</header>\n      </allowed-headers>\n      <expose-headers>\n        <header>X-Correlation-ID</header>\n        <header>X-RateLimit-Remaining</header>\n      </expose-headers>\n    </cors>\n\n    <!-- ================================================================= -->\n    <!-- POLICY 2: Correlation ID (set-header with expression)             -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: Distributed tracing is a key              -->\n    <!-- Operational Excellence concern. The exam may ask how to correlate -->\n    <!-- requests across microservices -- a correlation ID header is the   -->\n    <!-- standard pattern.                                                 -->\n    <!--                                                                   -->\n    <!-- Real-World: If the caller already sends X-Correlation-ID, we     -->\n    <!-- preserve it (skip). Otherwise, we generate a new GUID. This      -->\n    <!-- enables end-to-end tracing in Application Insights.              -->\n    <!-- ================================================================= -->\n    <set-header name=\"X-Correlation-ID\" exists-action=\"skip\">\n      <value>@{{ return Guid.NewGuid().ToString(\"D\"); }}</value>\n    </set-header>\n\n    <!-- ================================================================= -->\n    <!-- POLICY 3: Rate Limiting by Subscription Key (rate-limit-by-key)   -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: Throttling protects backends from bursts.  -->\n    <!-- rate-limit-by-key uses PER-GATEWAY counters (not global). For     -->\n    <!-- multi-region APIM, each region enforces its own counter.          -->\n    <!-- Use quota-by-key for GLOBAL limits across regions.                -->\n    <!--                                                                   -->\n    <!-- Key distinction the exam tests:                                   -->\n    <!--   rate-limit = short-term burst protection (per minute)           -->\n    <!--   quota      = long-term usage cap (per day/month)                -->\n    <!--                                                                   -->\n    <!-- retry-after-header-name surfaces a custom header so callers know -->\n    <!-- exactly when to retry -- better than guessing.                    -->\n    <!-- ================================================================= -->\n    <rate-limit-by-key calls=\"{1}\" renewal-period=\"{2}\" counter-key=\"@(context.Subscription.Id)\" retry-after-header-name=\"X-RateLimit-RetryAfter\" remaining-calls-header-name=\"X-RateLimit-Remaining\" />\n\n    <!-- ================================================================= -->\n    <!-- POLICY 4: Rate Limiting for Anonymous Access by IP                -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: APIs that allow anonymous access (no       -->\n    <!-- subscription key) still need protection. IP-based rate limiting   -->\n    <!-- is the standard pattern. The exam may present a scenario where    -->\n    <!-- unauthenticated endpoints are being abused.                       -->\n    <!--                                                                   -->\n    <!-- Real-World: Be aware that multiple users behind a NAT share one  -->\n    <!-- public IP. Set limits accordingly -- not too aggressive.           -->\n    <!-- ================================================================= -->\n    <rate-limit-by-key calls=\"{3}\" renewal-period=\"{4}\" counter-key=\"@(context.Request.IpAddress)\" retry-after-header-name=\"X-RateLimit-RetryAfter-IP\" />\n\n    <!-- ================================================================= -->\n    <!-- POLICY 5: Daily Quota by Subscription Key (quota-by-key)          -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: Quotas are GLOBAL across all APIM          -->\n    <!-- gateways (unlike rate-limit which is per-gateway). Use quotas     -->\n    <!-- for billing tiers and long-term usage caps.                        -->\n    <!--                                                                   -->\n    <!-- bandwidth attribute limits data transfer in KB -- important for   -->\n    <!-- Cost Optimization when backend egress is expensive.               -->\n    <!-- ================================================================= -->\n    <quota-by-key calls=\"{5}\" bandwidth=\"{6}\" renewal-period=\"86400\" counter-key=\"@(context.Subscription.Id)\" />\n  </inbound>\n\n  <backend>\n    <!-- Forward to backend with a 30-second timeout -->\n    <forward-request timeout=\"30\" />\n  </backend>\n\n  <outbound>\n    <!-- ================================================================= -->\n    <!-- POLICY 8: Security Header Removal (set-header delete)             -->\n    <!-- ================================================================= -->\n    <!-- AZ-305 Exam Relevance: Defense-in-depth requires removing headers -->\n    <!-- that reveal backend technology. OWASP API Security Top 10 lists   -->\n    <!-- information disclosure as a common vulnerability.                  -->\n    <!--                                                                   -->\n    <!-- Real-World: Attackers use Server, X-Powered-By, and X-AspNet-    -->\n    <!-- Version headers to fingerprint your stack and find known CVEs.    -->\n    <!-- ================================================================= -->\n    <set-header name=\"X-Powered-By\" exists-action=\"delete\" />\n    <set-header name=\"X-AspNet-Version\" exists-action=\"delete\" />\n    <set-header name=\"Server\" exists-action=\"delete\" />\n    <set-header name=\"X-StackTrace\" exists-action=\"delete\" />\n  </outbound>\n\n  <on-error>\n    <base />\n    <!-- ================================================================= -->\n    <!-- AZ-305 Teaching Point: The on-error section catches policy         -->\n    <!-- execution failures. In production, log the error to Application   -->\n    <!-- Insights and return a sanitized error response -- never leak      -->\n    <!-- stack traces or internal details to callers.                       -->\n    <!-- ================================================================= -->\n  </on-error>\n</policies>', variables('corsOriginsXml'), parameters('rateLimitCalls'), parameters('rateLimitPeriodSeconds'), parameters('rateLimitAnonymousCalls'), parameters('rateLimitAnonymousPeriodSeconds'), parameters('quotaDailyCalls'), parameters('quotaDailyBandwidthKB'))]",
+        "format": "xml"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]"
+      ],
+      "metadata": {
+        "description": "Global API policy with rate limiting, security headers, CORS, and correlation ID"
+      }
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/products",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}', variables('apimServiceName'), 'starter')]",
+      "properties": {
+        "displayName": "Starter",
+        "description": "Starter product for API consumers with rate limits",
+        "subscriptionRequired": true,
+        "approvalRequired": false,
+        "state": "published",
+        "terms": "Terms of service for the Starter product"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]"
+      ],
+      "metadata": {
+        "description": "Starter product"
+      }
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/products",
+      "apiVersion": "2023-05-01-preview",
+      "name": "[format('{0}/{1}', variables('apimServiceName'), 'unlimited')]",
+      "properties": {
+        "displayName": "Unlimited",
+        "description": "Unlimited product for trusted API consumers",
+        "subscriptionRequired": true,
+        "approvalRequired": true,
+        "state": "published",
+        "terms": "Terms of service for the Unlimited product"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]"
+      ],
+      "metadata": {
+        "description": "Unlimited product"
+      }
+    }
+  ],
+  "outputs": {
+    "apimName": {
+      "type": "string",
+      "metadata": {
+        "description": "API Management service name"
+      },
+      "value": "[variables('apimServiceName')]"
+    },
+    "apimId": {
+      "type": "string",
+      "metadata": {
+        "description": "API Management service ID"
+      },
+      "value": "[resourceId('Microsoft.ApiManagement/service', variables('apimServiceName'))]"
+    },
+    "gatewayUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "API Management gateway URL"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', variables('apimServiceName')), '2023-05-01-preview').gatewayUrl]"
+    },
+    "developerPortalUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "API Management developer portal URL"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', variables('apimServiceName')), '2023-05-01-preview').developerPortalUrl]"
+    },
+    "managementApiUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "API Management management API URL"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', variables('apimServiceName')), '2023-05-01-preview').managementApiUrl]"
+    },
+    "scmUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "API Management SCM URL"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', variables('apimServiceName')), '2023-05-01-preview').scmUrl]"
+    },
+    "publicIpAddresses": {
+      "type": "array",
+      "metadata": {
+        "description": "API Management public IP addresses"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', variables('apimServiceName')), '2023-05-01-preview').publicIPAddresses]"
+    },
+    "privateIpAddresses": {
+      "type": "array",
+      "metadata": {
+        "description": "API Management private IP addresses"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', variables('apimServiceName')), '2023-05-01-preview').privateIPAddresses]"
+    },
+    "identityPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "System-assigned managed identity principal ID"
+      },
+      "value": "[if(parameters('enableManagedIdentity'), reference(resourceId('Microsoft.ApiManagement/service', variables('apimServiceName')), '2023-05-01-preview', 'full').identity.principalId, '')]"
+    },
+    "sku": {
+      "type": "string",
+      "metadata": {
+        "description": "API Management SKU"
+      },
+      "value": "[parameters('sku')]"
+    },
+    "vnetType": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual network type"
+      },
+      "value": "[parameters('virtualNetworkType')]"
+    }
+  }
+}

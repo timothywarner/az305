@@ -1,0 +1,118 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "_metadata": {
+    "comments": [
+      "==========================================================================",
+      "AZ-305 Logic App Conditional Routing - Parameter File",
+      "==========================================================================",
+      "",
+      "DEPLOYMENT INSTRUCTIONS:",
+      "  1. Update parameter values below for your environment",
+      "  2. Deploy with Azure CLI:",
+      "     az deployment group create \\",
+      "       --resource-group rg-az305-logic-demo \\",
+      "       --template-file logic-app-conditional.bicep \\",
+      "       --parameters logic-app-conditional.parameters.json",
+      "",
+      "  3. POST-DEPLOYMENT: Authorize M365 API Connections manually:",
+      "     a. Navigate to Azure Portal > Resource Group > API Connections",
+      "     b. Click each connection (Office 365 Outlook, Microsoft Teams)",
+      "     c. Click 'Edit API connection' in the left menu",
+      "     d. Click 'Authorize' and sign in with your M365 account",
+      "     e. Click 'Save' after authorization completes",
+      "",
+      "  4. Retrieve the HTTP trigger URL:",
+      "     az rest --method POST \\",
+      "       --uri '/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Logic/workflows/{name}/triggers/When_an_HTTP_request_is_received/listCallbackUrl?api-version=2016-06-01'",
+      "",
+      "  5. Test with a sample POST request (see examples below)",
+      "",
+      "SAMPLE TEST PAYLOADS:",
+      "",
+      "  Budget request (above threshold - triggers approval):",
+      "  {",
+      "    \"requestType\": \"budget\",",
+      "    \"priority\": \"high\",",
+      "    \"department\": \"Marketing\",",
+      "    \"description\": \"Annual conference sponsorship\",",
+      "    \"amount\": 15000,",
+      "    \"requestedBy\": \"user@contoso.com\",",
+      "    \"attachments\": [",
+      "      { \"fileName\": \"proposal.pdf\", \"fileSize\": 245000, \"contentType\": \"application/pdf\" }",
+      "    ]",
+      "  }",
+      "",
+      "  Access request (always requires approval):",
+      "  {",
+      "    \"requestType\": \"access\",",
+      "    \"priority\": \"medium\",",
+      "    \"department\": \"Engineering\",",
+      "    \"description\": \"Need access to production Key Vault\",",
+      "    \"requestedBy\": \"dev@contoso.com\"",
+      "  }",
+      "",
+      "  General request (no approval):",
+      "  {",
+      "    \"requestType\": \"general\",",
+      "    \"priority\": \"low\",",
+      "    \"department\": \"HR\",",
+      "    \"description\": \"Office supply order\",",
+      "    \"requestedBy\": \"hr@contoso.com\"",
+      "  }",
+      "",
+      "==========================================================================",
+      "AZ-305 EXAM TIPS FOR THIS DEMO:",
+      "==========================================================================",
+      "  - Logic Apps Consumption: Per-execution pricing, serverless, multi-tenant",
+      "  - Logic Apps Standard: App Service-based, VNET integration, stateful/stateless",
+      "  - Switch vs Condition: Switch for discrete values, Condition for boolean logic",
+      "  - Scope: Groups actions for collective error handling (try/catch pattern)",
+      "  - runAfter with Failed: Equivalent of catch block for error handling",
+      "  - For Each: Default concurrency 20, configurable for throughput vs ordering",
+      "  - API Connections: Separate Azure resources, require OAuth consent post-deploy",
+      "  - Managed Identity: For Azure service auth, NOT for M365 connector auth",
+      "=========================================================================="
+    ]
+  },
+  "parameters": {
+    "logicAppName": {
+      "value": "logic-request-router-dev-eastus"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "environment": {
+      "value": "dev"
+    },
+    "financeTeamEmail": {
+      "value": "tim@techtrainertim.com"
+    },
+    "itSecurityEmail": {
+      "value": "tim@techtrainertim.com"
+    },
+    "helpdeskEmail": {
+      "value": "tim@techtrainertim.com"
+    },
+    "errorNotificationEmail": {
+      "value": "tim@techtrainertim.com"
+    },
+    "teamsChannelId": {
+      "value": "19:general@thread.tacv2"
+    },
+    "teamsTeamId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "budgetApprovalThreshold": {
+      "value": 5000
+    },
+    "tags": {
+      "value": {
+        "owner": "Tim Warner",
+        "course": "AZ-305",
+        "platform": "OReilly Live Learning",
+        "deployment-date": "2026-01-30"
+      }
+    }
+  }
+}

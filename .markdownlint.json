@@ -1,0 +1,13 @@
+{
+  "default": true,
+  "MD009": { "br_spaces": 2, "strict": true },
+  "MD010": { "code_blocks": false },
+  "MD012": { "maximum": 1 },
+  "MD013": false,
+  "MD022": { "lines_above": 1, "lines_below": 1 },
+  "MD031": { "list_items": true },
+  "MD032": true,
+  "MD033": { "allowed_elements": ["br", "img", "a", "details", "summary", "p", "span"] },
+  "MD036": false,
+  "MD040": false
+}

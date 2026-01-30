@@ -1,0 +1,74 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "keyVaultName": {
+      "value": "kv-az305-tw",
+      "metadata": {
+        "description": "Replace with your existing Key Vault name from the keyvault-with-private-link.bicep deployment output."
+      }
+    },
+    "databaseConnectionString": {
+      "value": "Server=tcp:sql-contoso-eastus.database.windows.net,1433;Database=ContosoAppDb;Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;",
+      "metadata": {
+        "description": "Demo connection string using Azure AD (Entra ID) auth. In production, use a Key Vault reference or Azure DevOps variable group. Note: 'Active Directory Default' leverages managed identity, so no password is stored."
+      }
+    },
+    "externalApiKey": {
+      "value": "demo-api-key-replace-in-production",
+      "metadata": {
+        "description": "Demo API key placeholder. In production, supply via Azure DevOps pipeline secret variable or az keyvault secret set command."
+      }
+    },
+    "storageAccountKey": {
+      "value": "demo-storage-key-replace-in-production",
+      "metadata": {
+        "description": "Demo storage key placeholder. In production, prefer managed identity over storage account keys. If keys are required, use az storage account keys list to retrieve the real value."
+      }
+    },
+    "enableSecrets": {
+      "value": true,
+      "metadata": {
+        "description": "Set to false to disable all secrets (simulates secret rotation where old versions are disabled)."
+      }
+    },
+    "secretExpiryDays": {
+      "value": 365,
+      "metadata": {
+        "description": "Days until secrets expire. Common values: 90 (high security), 180 (moderate), 365 (standard)."
+      }
+    },
+    "enableDataEncryptionKey": {
+      "value": true
+    },
+    "enableSigningKey": {
+      "value": true
+    },
+    "certificateSubjectName": {
+      "value": "CN=contoso-app.azurewebsites.net",
+      "metadata": {
+        "description": "Subject for the self-signed TLS certificate. Replace with your actual hostname in production."
+      }
+    },
+    "certificateValidityMonths": {
+      "value": 12,
+      "metadata": {
+        "description": "Certificate validity period. Industry trend is moving toward shorter lifetimes (90 days for Let's Encrypt, 1 year max for public CAs)."
+      }
+    },
+    "certificateRenewalPercentage": {
+      "value": 80,
+      "metadata": {
+        "description": "Auto-renew at 80% of lifetime. For a 12-month cert, renewal triggers at ~9.6 months."
+      }
+    },
+    "tags": {
+      "value": {
+        "environment": "demo",
+        "purpose": "az305-keyvault-assets",
+        "examObjective": "AZ-305-Objective-2.4",
+        "deployedBy": "bicep-template"
+      }
+    }
+  }
+}

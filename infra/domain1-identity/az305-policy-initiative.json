@@ -1,0 +1,678 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.35.1.17967",
+      "templateHash": "3507904044490493021"
+    }
+  },
+  "parameters": {
+    "initiativePrefix": {
+      "type": "string",
+      "defaultValue": "AZ-305",
+      "metadata": {
+        "description": "Display name prefix for the initiative and assignment."
+      }
+    },
+    "requiredTagName": {
+      "type": "string",
+      "metadata": {
+        "description": "Required tag name to enforce on all resources (e.g., CostCenter, Environment)."
+      }
+    },
+    "requiredTagValue": {
+      "type": "string",
+      "metadata": {
+        "description": "Required tag value for the tag specified in requiredTagName."
+      }
+    },
+    "approvedExtensions": {
+      "type": "array",
+      "defaultValue": [
+        "MicrosoftMonitoringAgent",
+        "AzureMonitorWindowsAgent",
+        "AzureMonitorLinuxAgent",
+        "DependencyAgentWindows",
+        "DependencyAgentLinux",
+        "AzureNetworkWatcherExtension",
+        "AzureDiskEncryption",
+        "CustomScriptExtension"
+      ],
+      "metadata": {
+        "description": "List of approved VM extension names. Extensions not in this list will be flagged."
+      }
+    },
+    "minimumTlsVersion": {
+      "type": "string",
+      "defaultValue": "TLS1_2",
+      "allowedValues": [
+        "TLS1_2",
+        "TLS1_3"
+      ],
+      "metadata": {
+        "description": "Minimum TLS version required for Storage Accounts."
+      }
+    },
+    "enforcementMode": {
+      "type": "string",
+      "defaultValue": "Default",
+      "allowedValues": [
+        "Default",
+        "DoNotEnforce"
+      ],
+      "metadata": {
+        "description": "Enforcement mode for the policy assignment. Use DoNotEnforce for testing."
+      }
+    },
+    "exclusionResourceGroups": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Resource group names to exclude from the policy assignment (e.g., sandbox RGs)."
+      }
+    },
+    "assignmentLocation": {
+      "type": "string",
+      "defaultValue": "[deployment().location]",
+      "metadata": {
+        "description": "Azure region for the policy assignment identity (required for DINE/Modify effects)."
+      }
+    }
+  },
+  "variables": {
+    "copy": [
+      {
+        "name": "exclusionScopes",
+        "count": "[length(parameters('exclusionResourceGroups'))]",
+        "input": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('exclusionResourceGroups')[copyIndex('exclusionScopes')])]"
+      }
+    ],
+    "storageHttpsDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/404c3081-a854-4457-ae30-26a93ef643f9",
+    "storageTlsDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/fe83a0eb-a853-422d-aac2-1bffd182c5d0",
+    "keyVaultRbacDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/12d4fa5e-1f9f-4c21-97a9-b99b3c6611b5",
+    "sqlTdeDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/17k78e20-9358-41c9-923c-fb736d382a12",
+    "diskEncryptionDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
+    "nicNoPublicIpDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/83a86a26-fd1f-447c-b59d-e51f44264114",
+    "subnetNsgDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+    "storageNetworkAccessDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/34c877ad-507e-4c82-993e-3452a6e0ad3c",
+    "vmManagedIdentityDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/da0a5b59-e37b-403e-8f65-9efd3e1a35b7",
+    "guestOwnerDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/339353f6-2387-4a45-abe4-7f529d121046",
+    "activityLogProfileDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7796937f-307b-4598-941c-67d3a05ebfe7",
+    "activityLogRetentionDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b02aacc0-b073-424e-8298-42b22829ee0a",
+    "requireTagDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1e30110a-5ceb-460c-a204-c1c3969c6d62",
+    "vmManagedDisksDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/06a78e20-9358-41c9-923c-fb736d382a4d",
+    "approvedExtensionsDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/c0e996f8-39cf-4af9-9f45-83fbde810432",
+    "keyVaultSoftDeleteDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d",
+    "keyVaultPurgeProtectionDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b60c0b2-2dc2-4e1c-b5c9-abbed971de53"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/policySetDefinitions",
+      "apiVersion": "2023-04-01",
+      "name": "az305-security-governance-initiative",
+      "properties": {
+        "displayName": "[format('{0} Security & Governance Baseline', parameters('initiativePrefix'))]",
+        "description": "Comprehensive policy initiative covering security, networking, identity, monitoring, compute, and data protection controls aligned with AZ-305 exam objectives and the Azure Well-Architected Framework.",
+        "policyType": "Custom",
+        "metadata": {
+          "category": "Security & Governance",
+          "version": "1.0.0",
+          "az305ExamDomain": "Domain 1: Design Identity, Governance, and Monitoring Solutions",
+          "wafPillars": [
+            "Security",
+            "Operational Excellence",
+            "Reliability"
+          ]
+        },
+        "policyDefinitionGroups": [
+          {
+            "name": "SecurityAndCompliance",
+            "displayName": "Security & Compliance",
+            "description": "Policies ensuring encryption, secure protocols, and data protection."
+          },
+          {
+            "name": "Networking",
+            "displayName": "Network Security",
+            "description": "Policies enforcing network segmentation and private connectivity."
+          },
+          {
+            "name": "IdentityAndAccess",
+            "displayName": "Identity & Access Management",
+            "description": "Policies enforcing managed identities and least-privilege access."
+          },
+          {
+            "name": "MonitoringAndGovernance",
+            "displayName": "Monitoring & Governance",
+            "description": "Policies ensuring observability, logging, and resource tagging."
+          },
+          {
+            "name": "Compute",
+            "displayName": "Compute Security",
+            "description": "Policies governing VM disk management and approved extensions."
+          },
+          {
+            "name": "DataProtection",
+            "displayName": "Data Protection",
+            "description": "Policies protecting Key Vault from accidental or malicious deletion."
+          }
+        ],
+        "parameters": {
+          "storageHttpsEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Storage HTTPS Effect",
+              "description": "Effect for requiring HTTPS on Storage Accounts."
+            },
+            "allowedValues": [
+              "Audit",
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Deny"
+          },
+          "storageTlsEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Storage TLS Effect",
+              "description": "Effect for requiring minimum TLS version on Storage Accounts."
+            },
+            "allowedValues": [
+              "Audit",
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Deny"
+          },
+          "storageTlsVersion": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Minimum TLS Version",
+              "description": "Minimum TLS version required for Storage Accounts."
+            },
+            "allowedValues": [
+              "TLS1_2",
+              "TLS1_3"
+            ],
+            "defaultValue": "[parameters('minimumTlsVersion')]"
+          },
+          "keyVaultRbacEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Key Vault RBAC Effect",
+              "description": "Effect for requiring RBAC authorization on Key Vault."
+            },
+            "allowedValues": [
+              "Audit",
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Audit"
+          },
+          "sqlTdeEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "SQL TDE Effect",
+              "description": "Effect for requiring TDE on SQL databases."
+            },
+            "allowedValues": [
+              "AuditIfNotExists",
+              "Disabled"
+            ],
+            "defaultValue": "AuditIfNotExists"
+          },
+          "diskEncryptionEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Disk Encryption Effect",
+              "description": "Effect for requiring CMK encryption on managed disks."
+            },
+            "allowedValues": [
+              "Audit",
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Audit"
+          },
+          "nicNoPublicIpEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "NIC No Public IP Effect",
+              "description": "Effect for denying public IPs on network interfaces."
+            },
+            "allowedValues": [
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Deny"
+          },
+          "subnetNsgEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Subnet NSG Effect",
+              "description": "Effect for requiring NSGs on subnets."
+            },
+            "allowedValues": [
+              "AuditIfNotExists",
+              "Disabled"
+            ],
+            "defaultValue": "AuditIfNotExists"
+          },
+          "storageNetworkAccessEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Storage Network Access Effect",
+              "description": "Effect for restricting storage account network access."
+            },
+            "allowedValues": [
+              "Audit",
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Audit"
+          },
+          "keyVaultSoftDeleteEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Key Vault Soft Delete Effect",
+              "description": "Effect for requiring soft delete on Key Vault."
+            },
+            "allowedValues": [
+              "Audit",
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Audit"
+          },
+          "keyVaultPurgeProtectionEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Key Vault Purge Protection Effect",
+              "description": "Effect for requiring purge protection on Key Vault."
+            },
+            "allowedValues": [
+              "Audit",
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Audit"
+          },
+          "vmManagedDisksEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "VM Managed Disks Effect",
+              "description": "Effect for auditing VMs not using managed disks."
+            },
+            "allowedValues": [
+              "Audit",
+              "Disabled"
+            ],
+            "defaultValue": "Audit"
+          },
+          "approvedExtensionsList": {
+            "type": "Array",
+            "metadata": {
+              "displayName": "Approved VM Extensions",
+              "description": "List of approved VM extension publisher:type combinations."
+            },
+            "defaultValue": "[parameters('approvedExtensions')]"
+          },
+          "approvedExtensionsEffect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Approved Extensions Effect",
+              "description": "Effect for controlling which VM extensions can be installed."
+            },
+            "allowedValues": [
+              "Audit",
+              "Deny",
+              "Disabled"
+            ],
+            "defaultValue": "Audit"
+          },
+          "requiredTagNameParam": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Required Tag Name",
+              "description": "Name of the tag that must exist on all resources."
+            },
+            "defaultValue": "[parameters('requiredTagName')]"
+          },
+          "requiredTagValueParam": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Required Tag Value",
+              "description": "Value of the required tag."
+            },
+            "defaultValue": "[parameters('requiredTagValue')]"
+          }
+        },
+        "policyDefinitions": [
+          {
+            "policyDefinitionId": "[variables('storageHttpsDefinitionId')]",
+            "policyDefinitionReferenceId": "storageAccountHttpsOnly",
+            "groupNames": [
+              "SecurityAndCompliance"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('storageHttpsEffect')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('storageTlsDefinitionId')]",
+            "policyDefinitionReferenceId": "storageAccountMinTls",
+            "groupNames": [
+              "SecurityAndCompliance"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('storageTlsEffect')]"
+              },
+              "minimumTlsVersion": {
+                "value": "[[parameters('storageTlsVersion')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('keyVaultRbacDefinitionId')]",
+            "policyDefinitionReferenceId": "keyVaultRbacModel",
+            "groupNames": [
+              "SecurityAndCompliance"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('keyVaultRbacEffect')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('sqlTdeDefinitionId')]",
+            "policyDefinitionReferenceId": "sqlDatabaseTde",
+            "groupNames": [
+              "SecurityAndCompliance"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('sqlTdeEffect')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('diskEncryptionDefinitionId')]",
+            "policyDefinitionReferenceId": "diskCmkEncryption",
+            "groupNames": [
+              "SecurityAndCompliance"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('diskEncryptionEffect')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('nicNoPublicIpDefinitionId')]",
+            "policyDefinitionReferenceId": "nicDenyPublicIp",
+            "groupNames": [
+              "Networking"
+            ],
+            "parameters": {}
+          },
+          {
+            "policyDefinitionId": "[variables('subnetNsgDefinitionId')]",
+            "policyDefinitionReferenceId": "subnetRequireNsg",
+            "groupNames": [
+              "Networking"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('subnetNsgEffect')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('storageNetworkAccessDefinitionId')]",
+            "policyDefinitionReferenceId": "storageRestrictNetworkAccess",
+            "groupNames": [
+              "Networking"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('storageNetworkAccessEffect')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('vmManagedIdentityDefinitionId')]",
+            "policyDefinitionReferenceId": "vmManagedIdentity",
+            "groupNames": [
+              "IdentityAndAccess"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "AuditIfNotExists"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('guestOwnerDefinitionId')]",
+            "policyDefinitionReferenceId": "guestAccountsOwnerRemoval",
+            "groupNames": [
+              "IdentityAndAccess"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "AuditIfNotExists"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('activityLogProfileDefinitionId')]",
+            "policyDefinitionReferenceId": "activityLogProfile",
+            "groupNames": [
+              "MonitoringAndGovernance"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "AuditIfNotExists"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('activityLogRetentionDefinitionId')]",
+            "policyDefinitionReferenceId": "activityLogRetention365",
+            "groupNames": [
+              "MonitoringAndGovernance"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "AuditIfNotExists"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('requireTagDefinitionId')]",
+            "policyDefinitionReferenceId": "requireTagOnResources",
+            "groupNames": [
+              "MonitoringAndGovernance"
+            ],
+            "parameters": {
+              "tagName": {
+                "value": "[[parameters('requiredTagNameParam')]"
+              },
+              "tagValue": {
+                "value": "[[parameters('requiredTagValueParam')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('vmManagedDisksDefinitionId')]",
+            "policyDefinitionReferenceId": "vmUseManagedDisks",
+            "groupNames": [
+              "Compute"
+            ],
+            "parameters": {}
+          },
+          {
+            "policyDefinitionId": "[variables('approvedExtensionsDefinitionId')]",
+            "policyDefinitionReferenceId": "approvedVmExtensions",
+            "groupNames": [
+              "Compute"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('approvedExtensionsEffect')]"
+              },
+              "approvedExtensions": {
+                "value": "[[parameters('approvedExtensionsList')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('keyVaultSoftDeleteDefinitionId')]",
+            "policyDefinitionReferenceId": "keyVaultSoftDelete",
+            "groupNames": [
+              "DataProtection"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('keyVaultSoftDeleteEffect')]"
+              }
+            }
+          },
+          {
+            "policyDefinitionId": "[variables('keyVaultPurgeProtectionDefinitionId')]",
+            "policyDefinitionReferenceId": "keyVaultPurgeProtection",
+            "groupNames": [
+              "DataProtection"
+            ],
+            "parameters": {
+              "effect": {
+                "value": "[[parameters('keyVaultPurgeProtectionEffect')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/policyAssignments",
+      "apiVersion": "2023-04-01",
+      "name": "az305-security-baseline",
+      "location": "[parameters('assignmentLocation')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "displayName": "[format('{0} Security & Governance Baseline Assignment', parameters('initiativePrefix'))]",
+        "description": "Assigns the AZ-305 security and governance baseline initiative to this subscription. Covers encryption, networking, identity, monitoring, compute, and data protection controls.",
+        "policyDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/policySetDefinitions', 'az305-security-governance-initiative')]",
+        "enforcementMode": "[parameters('enforcementMode')]",
+        "notScopes": "[variables('exclusionScopes')]",
+        "parameters": {
+          "storageHttpsEffect": {
+            "value": "Deny"
+          },
+          "storageTlsEffect": {
+            "value": "Deny"
+          },
+          "storageTlsVersion": {
+            "value": "[parameters('minimumTlsVersion')]"
+          },
+          "keyVaultRbacEffect": {
+            "value": "Audit"
+          },
+          "sqlTdeEffect": {
+            "value": "AuditIfNotExists"
+          },
+          "diskEncryptionEffect": {
+            "value": "Audit"
+          },
+          "subnetNsgEffect": {
+            "value": "AuditIfNotExists"
+          },
+          "storageNetworkAccessEffect": {
+            "value": "Audit"
+          },
+          "keyVaultSoftDeleteEffect": {
+            "value": "Audit"
+          },
+          "keyVaultPurgeProtectionEffect": {
+            "value": "Audit"
+          },
+          "vmManagedDisksEffect": {
+            "value": "Audit"
+          },
+          "approvedExtensionsList": {
+            "value": "[parameters('approvedExtensions')]"
+          },
+          "approvedExtensionsEffect": {
+            "value": "Audit"
+          },
+          "requiredTagNameParam": {
+            "value": "[parameters('requiredTagName')]"
+          },
+          "requiredTagValueParam": {
+            "value": "[parameters('requiredTagValue')]"
+          }
+        },
+        "nonComplianceMessages": [
+          {
+            "message": "This resource does not comply with the AZ-305 Security & Governance Baseline. Review the specific policy for remediation guidance."
+          },
+          {
+            "policyDefinitionReferenceId": "storageAccountHttpsOnly",
+            "message": "Storage accounts must use HTTPS (secure transfer). Set supportsHttpsTrafficOnly to true."
+          },
+          {
+            "policyDefinitionReferenceId": "storageAccountMinTls",
+            "message": "Storage accounts must use TLS 1.2 or higher. Set minimumTlsVersion to TLS1_2."
+          },
+          {
+            "policyDefinitionReferenceId": "nicDenyPublicIp",
+            "message": "Network interfaces cannot have public IP addresses. Use Azure Bastion, Private Link, or a load balancer for inbound connectivity."
+          },
+          {
+            "policyDefinitionReferenceId": "requireTagOnResources",
+            "message": "All resources must have the required tag. Add the tag before deployment."
+          }
+        ]
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Authorization/policySetDefinitions', 'az305-security-governance-initiative')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "initiativeId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the policy initiative (policy set definition)."
+      },
+      "value": "[subscriptionResourceId('Microsoft.Authorization/policySetDefinitions', 'az305-security-governance-initiative')]"
+    },
+    "assignmentId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the policy assignment."
+      },
+      "value": "[subscriptionResourceId('Microsoft.Authorization/policyAssignments', 'az305-security-baseline')]"
+    },
+    "assignmentPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Principal ID of the assignment managed identity (for RBAC role grants)."
+      },
+      "value": "[reference(subscriptionResourceId('Microsoft.Authorization/policyAssignments', 'az305-security-baseline'), '2023-04-01', 'full').identity.principalId]"
+    },
+    "assignmentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the policy assignment for use in remediation tasks."
+      },
+      "value": "az305-security-baseline"
+    }
+  }
+}

@@ -1,0 +1,806 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.35.1.17967",
+      "templateHash": "2884741730387725512"
+    }
+  },
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80,
+      "metadata": {
+        "description": "Name of the Logic App. Follow Azure naming conventions: logic-<workload>-<env>-<region>"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources. Defaults to the resource group location."
+      }
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "test",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment identifier used for tagging and naming conventions."
+      }
+    },
+    "tenantId": {
+      "type": "string",
+      "defaultValue": "[subscription().tenantId]",
+      "metadata": {
+        "description": "Microsoft Entra ID tenant ID for M365 connector authentication."
+      }
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Log Analytics workspace resource ID for diagnostic settings. Leave empty to skip diagnostics."
+      }
+    },
+    "financeTeamEmail": {
+      "type": "string",
+      "defaultValue": "finance@contoso.com",
+      "metadata": {
+        "description": "Finance team email address for budget request routing."
+      }
+    },
+    "itSecurityEmail": {
+      "type": "string",
+      "defaultValue": "itsecurity@contoso.com",
+      "metadata": {
+        "description": "IT Security team email address for access request routing."
+      }
+    },
+    "helpdeskEmail": {
+      "type": "string",
+      "defaultValue": "helpdesk@contoso.com",
+      "metadata": {
+        "description": "Helpdesk email address for general request routing."
+      }
+    },
+    "errorNotificationEmail": {
+      "type": "string",
+      "defaultValue": "ops-alerts@contoso.com",
+      "metadata": {
+        "description": "Error notification email address for failed workflow runs."
+      }
+    },
+    "teamsChannelId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Teams channel ID for high-priority notifications."
+      }
+    },
+    "teamsTeamId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Teams team ID for high-priority notifications."
+      }
+    },
+    "budgetApprovalThreshold": {
+      "type": "int",
+      "defaultValue": 5000,
+      "metadata": {
+        "description": "Budget threshold amount above which approval is required."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to all resources for governance and cost tracking."
+      }
+    }
+  },
+  "variables": {
+    "workflowSchema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "office365ConnectionName": "[format('conn-office365-{0}', parameters('logicAppName'))]",
+    "teamsConnectionName": "[format('conn-teams-{0}', parameters('logicAppName'))]",
+    "office365ApiId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'office365')]",
+    "teamsApiId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'teams')]",
+    "defaultTags": {
+      "environment": "[parameters('environment')]",
+      "application": "az305-logic-app-demo",
+      "exam-domain": "domain4-compute",
+      "iac-tool": "bicep",
+      "cost-center": "training"
+    },
+    "allTags": "[union(variables('defaultTags'), parameters('tags'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "2016-06-01",
+      "name": "[variables('office365ConnectionName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "properties": {
+        "displayName": "[format('Office 365 Outlook - {0}', parameters('logicAppName'))]",
+        "api": {
+          "id": "[variables('office365ApiId')]",
+          "displayName": "Office 365 Outlook",
+          "description": "Microsoft Office 365 email connector for sending notifications"
+        }
+      },
+      "metadata": {
+        "description": "Office 365 Outlook API Connection for sending emails. Requires post-deployment OAuth consent."
+      }
+    },
+    {
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "2016-06-01",
+      "name": "[variables('teamsConnectionName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "properties": {
+        "displayName": "[format('Microsoft Teams - {0}', parameters('logicAppName'))]",
+        "api": {
+          "id": "[variables('teamsApiId')]",
+          "displayName": "Microsoft Teams",
+          "description": "Microsoft Teams connector for posting high-priority notifications"
+        }
+      },
+      "metadata": {
+        "description": "Microsoft Teams API Connection for posting channel messages. Requires post-deployment OAuth consent."
+      }
+    },
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "state": "Enabled",
+        "parameters": {
+          "$connections": {
+            "value": {
+              "office365": {
+                "connectionId": "[resourceId('Microsoft.Web/connections', variables('office365ConnectionName'))]",
+                "connectionName": "[variables('office365ConnectionName')]",
+                "id": "[variables('office365ApiId')]"
+              },
+              "teams": {
+                "connectionId": "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]",
+                "connectionName": "[variables('teamsConnectionName')]",
+                "id": "[variables('teamsApiId')]"
+              }
+            }
+          },
+          "financeTeamEmail": {
+            "value": "[parameters('financeTeamEmail')]"
+          },
+          "itSecurityEmail": {
+            "value": "[parameters('itSecurityEmail')]"
+          },
+          "helpdeskEmail": {
+            "value": "[parameters('helpdeskEmail')]"
+          },
+          "errorNotificationEmail": {
+            "value": "[parameters('errorNotificationEmail')]"
+          },
+          "teamsChannelId": {
+            "value": "[parameters('teamsChannelId')]"
+          },
+          "teamsTeamId": {
+            "value": "[parameters('teamsTeamId')]"
+          },
+          "budgetApprovalThreshold": {
+            "value": "[parameters('budgetApprovalThreshold')]"
+          }
+        },
+        "definition": {
+          "$schema": "[variables('workflowSchema')]",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            },
+            "financeTeamEmail": {
+              "defaultValue": "",
+              "type": "String"
+            },
+            "itSecurityEmail": {
+              "defaultValue": "",
+              "type": "String"
+            },
+            "helpdeskEmail": {
+              "defaultValue": "",
+              "type": "String"
+            },
+            "errorNotificationEmail": {
+              "defaultValue": "",
+              "type": "String"
+            },
+            "teamsChannelId": {
+              "defaultValue": "",
+              "type": "String"
+            },
+            "teamsTeamId": {
+              "defaultValue": "",
+              "type": "String"
+            },
+            "budgetApprovalThreshold": {
+              "defaultValue": 5000,
+              "type": "Int"
+            }
+          },
+          "triggers": {
+            "When_an_HTTP_request_is_received": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestType": {
+                      "type": "string",
+                      "description": "Type of request: budget, access, or general"
+                    },
+                    "priority": {
+                      "type": "string",
+                      "description": "Priority level: high, medium, or low"
+                    },
+                    "department": {
+                      "type": "string",
+                      "description": "Requesting department name"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Detailed description of the request"
+                    },
+                    "amount": {
+                      "type": "number",
+                      "description": "Budget amount (applicable for budget requests)"
+                    },
+                    "requestedBy": {
+                      "type": "string",
+                      "description": "Email of the person making the request"
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "fileSize": {
+                            "type": "integer"
+                          },
+                          "contentType": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "description": "Array of attachment metadata objects"
+                    }
+                  },
+                  "required": [
+                    "requestType",
+                    "priority",
+                    "department",
+                    "description"
+                  ]
+                },
+                "method": "POST"
+              }
+            }
+          },
+          "actions": {
+            "Initialize_approvalRequired": {
+              "type": "InitializeVariable",
+              "inputs": {
+                "variables": [
+                  {
+                    "name": "approvalRequired",
+                    "type": "boolean",
+                    "value": false
+                  }
+                ]
+              },
+              "runAfter": {}
+            },
+            "Initialize_routingEmail": {
+              "type": "InitializeVariable",
+              "inputs": {
+                "variables": [
+                  {
+                    "name": "routingEmail",
+                    "type": "string",
+                    "value": ""
+                  }
+                ]
+              },
+              "runAfter": {
+                "Initialize_approvalRequired": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Initialize_responseMessage": {
+              "type": "InitializeVariable",
+              "inputs": {
+                "variables": [
+                  {
+                    "name": "responseMessage",
+                    "type": "string",
+                    "value": ""
+                  }
+                ]
+              },
+              "runAfter": {
+                "Initialize_routingEmail": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Initialize_slaDeadline": {
+              "type": "InitializeVariable",
+              "inputs": {
+                "variables": [
+                  {
+                    "name": "slaDeadline",
+                    "type": "string",
+                    "value": ""
+                  }
+                ]
+              },
+              "runAfter": {
+                "Initialize_responseMessage": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Scope_Main_Processing": {
+              "type": "Scope",
+              "runAfter": {
+                "Initialize_slaDeadline": [
+                  "Succeeded"
+                ]
+              },
+              "actions": {
+                "Switch_on_requestType": {
+                  "type": "Switch",
+                  "expression": "@triggerBody()?['requestType']",
+                  "cases": {
+                    "Case_Budget": {
+                      "case": "budget",
+                      "actions": {
+                        "Set_routingEmail_Finance": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "routingEmail",
+                            "value": "@parameters('financeTeamEmail')"
+                          }
+                        },
+                        "Condition_Budget_Threshold": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "greater": [
+                                  "@triggerBody()?['amount']",
+                                  "@parameters('budgetApprovalThreshold')"
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "Set_approvalRequired_True_Budget": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "approvalRequired",
+                                "value": true
+                              }
+                            },
+                            "Set_responseMessage_Budget_Approval": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "responseMessage",
+                                "value": "Budget request for @{triggerBody()?['amount']} routed to Finance. Approval required (exceeds threshold)."
+                              },
+                              "runAfter": {
+                                "Set_approvalRequired_True_Budget": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          },
+                          "else": {
+                            "actions": {
+                              "Set_responseMessage_Budget_NoApproval": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                  "name": "responseMessage",
+                                  "value": "Budget request for @{triggerBody()?['amount']} routed to Finance. No approval required."
+                                }
+                              }
+                            }
+                          },
+                          "runAfter": {
+                            "Set_routingEmail_Finance": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "Case_Access": {
+                      "case": "access",
+                      "actions": {
+                        "Set_routingEmail_ITSecurity": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "routingEmail",
+                            "value": "@parameters('itSecurityEmail')"
+                          }
+                        },
+                        "Set_approvalRequired_True_Access": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "approvalRequired",
+                            "value": true
+                          },
+                          "runAfter": {
+                            "Set_routingEmail_ITSecurity": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Set_responseMessage_Access": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "responseMessage",
+                            "value": "Access request routed to IT Security. Approval is always required for access requests."
+                          },
+                          "runAfter": {
+                            "Set_approvalRequired_True_Access": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "Case_General": {
+                      "case": "general",
+                      "actions": {
+                        "Set_routingEmail_Helpdesk": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "routingEmail",
+                            "value": "@parameters('helpdeskEmail')"
+                          }
+                        },
+                        "Set_responseMessage_General": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "responseMessage",
+                            "value": "General request routed to Helpdesk. No approval required."
+                          },
+                          "runAfter": {
+                            "Set_routingEmail_Helpdesk": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "actions": {
+                      "Set_routingEmail_Error": {
+                        "type": "SetVariable",
+                        "inputs": {
+                          "name": "routingEmail",
+                          "value": "@parameters('errorNotificationEmail')"
+                        }
+                      },
+                      "Set_responseMessage_Error": {
+                        "type": "SetVariable",
+                        "inputs": {
+                          "name": "responseMessage",
+                          "value": "Unknown request type: @{triggerBody()?['requestType']}. Routed to operations for review."
+                        },
+                        "runAfter": {
+                          "Set_routingEmail_Error": [
+                            "Succeeded"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {}
+                },
+                "Condition_High_Priority": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@triggerBody()?['priority']",
+                          "high"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Set_slaDeadline_Short": {
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "slaDeadline",
+                        "value": "@{addHours(utcNow(), 4)}"
+                      }
+                    },
+                    "Post_Teams_Notification": {
+                      "type": "ApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connection": {
+                            "name": "@parameters('$connections')['teams']['connectionId']"
+                          }
+                        },
+                        "method": "post",
+                        "path": "/v3/beta/teams/@{encodeURIComponent(parameters('teamsTeamId'))}/channels/@{encodeURIComponent(parameters('teamsChannelId'))}/messages",
+                        "body": {
+                          "body": {
+                            "content": "<h3>HIGH PRIORITY Request</h3><p><strong>Type:</strong> @{triggerBody()?['requestType']}</p><p><strong>Department:</strong> @{triggerBody()?['department']}</p><p><strong>Description:</strong> @{triggerBody()?['description']}</p><p><strong>SLA Deadline:</strong> @{variables('slaDeadline')}</p><p><strong>Approval Required:</strong> @{variables('approvalRequired')}</p>",
+                            "contentType": "html"
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "Set_slaDeadline_Short": [
+                          "Succeeded"
+                        ]
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Set_slaDeadline_Standard": {
+                        "type": "SetVariable",
+                        "inputs": {
+                          "name": "slaDeadline",
+                          "value": "@{addHours(utcNow(), 24)}"
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Switch_on_requestType": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "For_Each_Attachment": {
+                  "type": "Foreach",
+                  "foreach": "@triggerBody()?['attachments']",
+                  "actions": {
+                    "Compose_Attachment_Log": {
+                      "type": "Compose",
+                      "inputs": {
+                        "timestamp": "@utcNow()",
+                        "requestType": "@triggerBody()?['requestType']",
+                        "department": "@triggerBody()?['department']",
+                        "fileName": "@items('For_Each_Attachment')?['fileName']",
+                        "fileSize": "@items('For_Each_Attachment')?['fileSize']",
+                        "contentType": "@items('For_Each_Attachment')?['contentType']",
+                        "workflowRunId": "@workflow().run.name"
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Condition_High_Priority": [
+                      "Succeeded",
+                      "Skipped"
+                    ]
+                  },
+                  "runtimeConfiguration": {
+                    "concurrency": {
+                      "repetitions": 1
+                    }
+                  }
+                },
+                "Send_Routing_Email": {
+                  "type": "ApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connection": {
+                        "name": "@parameters('$connections')['office365']['connectionId']"
+                      }
+                    },
+                    "method": "post",
+                    "path": "/v2/Mail",
+                    "body": {
+                      "To": "@variables('routingEmail')",
+                      "Subject": "[@{triggerBody()?['priority']}] @{triggerBody()?['requestType']} request from @{triggerBody()?['department']}",
+                      "Body": "<h2>New @{triggerBody()?['requestType']} Request</h2><table border=\"1\" cellpadding=\"8\"><tr><td><strong>Department</strong></td><td>@{triggerBody()?['department']}</td></tr><tr><td><strong>Priority</strong></td><td>@{triggerBody()?['priority']}</td></tr><tr><td><strong>Description</strong></td><td>@{triggerBody()?['description']}</td></tr><tr><td><strong>Approval Required</strong></td><td>@{variables('approvalRequired')}</td></tr><tr><td><strong>SLA Deadline</strong></td><td>@{variables('slaDeadline')}</td></tr><tr><td><strong>Requested By</strong></td><td>@{triggerBody()?['requestedBy']}</td></tr></table>",
+                      "Importance": "@{if(equals(triggerBody()?['priority'], 'high'), 'High', 'Normal')}",
+                      "IsHtml": true
+                    }
+                  },
+                  "runAfter": {
+                    "For_Each_Attachment": [
+                      "Succeeded",
+                      "Skipped"
+                    ]
+                  }
+                }
+              }
+            },
+            "Scope_Error_Handling": {
+              "type": "Scope",
+              "runAfter": {
+                "Scope_Main_Processing": [
+                  "Failed",
+                  "TimedOut"
+                ]
+              },
+              "actions": {
+                "Send_Error_Notification": {
+                  "type": "ApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connection": {
+                        "name": "@parameters('$connections')['office365']['connectionId']"
+                      }
+                    },
+                    "method": "post",
+                    "path": "/v2/Mail",
+                    "body": {
+                      "To": "@parameters('errorNotificationEmail')",
+                      "Subject": "WORKFLOW FAILURE: Request routing logic app",
+                      "Body": "<h2>Workflow Execution Failed</h2><p><strong>Workflow Run ID:</strong> @{workflow().run.name}</p><p><strong>Timestamp:</strong> @{utcNow()}</p><p><strong>Request Type:</strong> @{triggerBody()?['requestType']}</p><p><strong>Department:</strong> @{triggerBody()?['department']}</p><p>Please investigate in the Azure Portal under Logic App run history.</p>",
+                      "Importance": "High",
+                      "IsHtml": true
+                    }
+                  },
+                  "runAfter": {}
+                }
+              }
+            },
+            "Response_Success": {
+              "type": "Response",
+              "kind": "Http",
+              "inputs": {
+                "statusCode": 200,
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "body": {
+                  "status": "accepted",
+                  "message": "@variables('responseMessage')",
+                  "routedTo": "@variables('routingEmail')",
+                  "approvalRequired": "@variables('approvalRequired')",
+                  "slaDeadline": "@variables('slaDeadline')",
+                  "workflowRunId": "@workflow().run.name",
+                  "timestamp": "@utcNow()"
+                }
+              },
+              "runAfter": {
+                "Scope_Main_Processing": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Response_Failure": {
+              "type": "Response",
+              "kind": "Http",
+              "inputs": {
+                "statusCode": 500,
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "body": {
+                  "status": "failed",
+                  "message": "Request processing failed. The operations team has been notified.",
+                  "workflowRunId": "@workflow().run.name",
+                  "timestamp": "@utcNow()"
+                }
+              },
+              "runAfter": {
+                "Scope_Error_Handling": [
+                  "Succeeded",
+                  "Failed"
+                ]
+              }
+            }
+          },
+          "outputs": {}
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', variables('office365ConnectionName'))]",
+        "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]"
+      ],
+      "metadata": {
+        "description": "Consumption Logic App with conditional routing, branching, loops, and M365 integration."
+      }
+    },
+    {
+      "condition": "[not(empty(parameters('logAnalyticsWorkspaceId')))]",
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "scope": "[format('Microsoft.Logic/workflows/{0}', parameters('logicAppName'))]",
+      "name": "[format('diag-{0}', parameters('logicAppName'))]",
+      "properties": {
+        "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+        "logs": [
+          {
+            "category": "WorkflowRuntime",
+            "enabled": true
+          }
+        ],
+        "metrics": [
+          {
+            "category": "AllMetrics",
+            "enabled": true
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+      ],
+      "metadata": {
+        "description": "Diagnostic settings for Logic App monitoring. Sends workflow runtime logs and metrics to Log Analytics."
+      }
+    }
+  ],
+  "outputs": {
+    "logicAppId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the deployed Logic App."
+      },
+      "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+    },
+    "logicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the deployed Logic App."
+      },
+      "value": "[parameters('logicAppName')]"
+    },
+    "logicAppPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Principal ID of the Logic App system-assigned managed identity."
+      },
+      "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]"
+    },
+    "office365ConnectionId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Office 365 API Connection (requires post-deployment OAuth consent)."
+      },
+      "value": "[resourceId('Microsoft.Web/connections', variables('office365ConnectionName'))]"
+    },
+    "teamsConnectionId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Teams API Connection (requires post-deployment OAuth consent)."
+      },
+      "value": "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]"
+    }
+  }
+}

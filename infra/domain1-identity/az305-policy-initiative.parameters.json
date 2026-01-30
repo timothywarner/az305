@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "_metadata": {
+    "description": "Parameters for the AZ-305 Security & Governance Policy Initiative. Customize effects and values per environment.",
+    "deployment_command": "az deployment sub create --location eastus --template-file az305-policy-initiative.bicep --parameters az305-policy-initiative.parameters.json",
+    "az305_exam_note": "Understanding parameter files is essential. They allow you to reuse the same template across dev/test/prod with different enforcement levels. For example, use DoNotEnforce in dev and Default in prod."
+  },
+  "parameters": {
+    "initiativePrefix": {
+      "value": "AZ-305"
+    },
+    "requiredTagName": {
+      "value": "CostCenter"
+    },
+    "requiredTagValue": {
+      "value": "IT-Operations"
+    },
+    "approvedExtensions": {
+      "value": [
+        "MicrosoftMonitoringAgent",
+        "AzureMonitorWindowsAgent",
+        "AzureMonitorLinuxAgent",
+        "DependencyAgentWindows",
+        "DependencyAgentLinux",
+        "AzureNetworkWatcherExtension",
+        "AzureDiskEncryption",
+        "CustomScriptExtension",
+        "AADSSHLoginForLinux",
+        "KeyVaultForWindows",
+        "KeyVaultForLinux"
+      ]
+    },
+    "minimumTlsVersion": {
+      "value": "TLS1_2"
+    },
+    "enforcementMode": {
+      "value": "DoNotEnforce",
+      "_metadata_note": "Set to DoNotEnforce for initial testing. Change to Default after reviewing compliance results. AZ-305 exam tip: Always start with DoNotEnforce to assess impact before enforcing."
+    },
+    "exclusionResourceGroups": {
+      "value": [
+        "rg-sandbox-dev",
+        "rg-lab-testing"
+      ]
+    },
+    "assignmentLocation": {
+      "value": "eastus2"
+    }
+  }
+}

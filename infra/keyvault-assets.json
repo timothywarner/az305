@@ -1,0 +1,386 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.35.1.17967",
+      "templateHash": "3448879116890453690"
+    }
+  },
+  "parameters": {
+    "keyVaultName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Name of the EXISTING Key Vault to add assets to."
+      }
+    },
+    "databaseConnectionString": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Database connection string value. Use a secure parameter or Key Vault reference in production."
+      }
+    },
+    "externalApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "External API key value. Use a secure parameter or Key Vault reference in production."
+      }
+    },
+    "storageAccountKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Storage account key value. Use a secure parameter or Key Vault reference in production."
+      }
+    },
+    "enableSecrets": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable or disable secrets (demonstrates secret rotation by disabling old versions)."
+      }
+    },
+    "secretExpiryDays": {
+      "type": "int",
+      "defaultValue": 365,
+      "minValue": 30,
+      "maxValue": 730,
+      "metadata": {
+        "description": "Number of days from now until secrets expire. Used to calculate expiration timestamps."
+      }
+    },
+    "enableDataEncryptionKey": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable or disable the data encryption key."
+      }
+    },
+    "enableSigningKey": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable or disable the signing key."
+      }
+    },
+    "certificateSubjectName": {
+      "type": "string",
+      "defaultValue": "CN=contoso-app.azurewebsites.net",
+      "metadata": {
+        "description": "Subject name for the TLS certificate (e.g., CN=contoso-app.azurewebsites.net)."
+      }
+    },
+    "certificateValidityMonths": {
+      "type": "int",
+      "defaultValue": 12,
+      "minValue": 1,
+      "maxValue": 36,
+      "metadata": {
+        "description": "Certificate validity in months."
+      }
+    },
+    "certificateRenewalPercentage": {
+      "type": "int",
+      "defaultValue": 80,
+      "minValue": 1,
+      "maxValue": 99,
+      "metadata": {
+        "description": "Percentage of certificate lifetime at which to trigger auto-renewal (1-99)."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "environment": "demo",
+        "purpose": "az305-keyvault-assets",
+        "examObjective": "AZ-305-Objective-2.4"
+      },
+      "metadata": {
+        "description": "Tags to apply to all Key Vault assets."
+      }
+    },
+    "now": {
+      "type": "int",
+      "defaultValue": "[dateTimeToEpoch(utcNow())]"
+    }
+  },
+  "variables": {
+    "secretActivationTime": "[parameters('now')]",
+    "secretExpirationTime": "[add(parameters('now'), mul(parameters('secretExpiryDays'), 86400))]",
+    "keyExpirationTime": "[add(parameters('now'), mul(730, 86400))]",
+    "keyActivationTime": "[parameters('now')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'app-database-connection-string')]",
+      "tags": "[union(parameters('tags'), createObject('assetType', 'secret', 'rotationSchedule', '90-days', 'rbacRole', 'Key Vault Secrets User'))]",
+      "properties": {
+        "contentType": "application/x-connection-string",
+        "value": "[parameters('databaseConnectionString')]",
+        "attributes": {
+          "enabled": "[parameters('enableSecrets')]",
+          "nbf": "[variables('secretActivationTime')]",
+          "exp": "[variables('secretExpirationTime')]"
+        }
+      },
+      "metadata": {
+        "description": "Database connection string secret - demonstrates storing structured credentials"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'external-api-key')]",
+      "tags": "[union(parameters('tags'), createObject('assetType', 'secret', 'rotationSchedule', '180-days', 'rbacRole', 'Key Vault Secrets User'))]",
+      "properties": {
+        "contentType": "text/plain",
+        "value": "[parameters('externalApiKey')]",
+        "attributes": {
+          "enabled": "[parameters('enableSecrets')]",
+          "nbf": "[variables('secretActivationTime')]",
+          "exp": "[variables('secretExpirationTime')]"
+        }
+      },
+      "metadata": {
+        "description": "External API key secret - demonstrates storing third-party credentials"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'storage-account-key')]",
+      "tags": "[union(parameters('tags'), createObject('assetType', 'secret', 'rotationSchedule', '60-days', 'rbacRole', 'Key Vault Secrets User'))]",
+      "properties": {
+        "contentType": "text/plain",
+        "value": "[parameters('storageAccountKey')]",
+        "attributes": {
+          "enabled": "[parameters('enableSecrets')]",
+          "nbf": "[variables('secretActivationTime')]",
+          "exp": "[variables('secretExpirationTime')]"
+        }
+      },
+      "metadata": {
+        "description": "Storage account key secret - demonstrates storing Azure service credentials"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/keys",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'data-encryption-key')]",
+      "tags": "[union(parameters('tags'), createObject('assetType', 'key', 'keyType', 'RSA-2048', 'purpose', 'data-encryption', 'rbacRole', 'Key Vault Crypto User'))]",
+      "properties": {
+        "kty": "RSA",
+        "keySize": 2048,
+        "keyOps": [
+          "encrypt",
+          "decrypt",
+          "wrapKey",
+          "unwrapKey"
+        ],
+        "attributes": {
+          "enabled": "[parameters('enableDataEncryptionKey')]",
+          "nbf": "[variables('keyActivationTime')]",
+          "exp": "[variables('keyExpirationTime')]"
+        },
+        "rotationPolicy": {
+          "attributes": {
+            "expiryTime": "P2Y"
+          },
+          "lifetimeActions": [
+            {
+              "action": {
+                "type": "rotate"
+              },
+              "trigger": {
+                "timeBeforeExpiry": "P2M"
+              }
+            },
+            {
+              "action": {
+                "type": "notify"
+              },
+              "trigger": {
+                "timeBeforeExpiry": "P30D"
+              }
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "description": "RSA 2048-bit key for data encryption and key wrapping (envelope encryption pattern)"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/keys",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'signing-key')]",
+      "tags": "[union(parameters('tags'), createObject('assetType', 'key', 'keyType', 'EC-P256', 'purpose', 'digital-signatures', 'rbacRole', 'Key Vault Crypto User'))]",
+      "properties": {
+        "kty": "EC",
+        "curveName": "P-256",
+        "keyOps": [
+          "sign",
+          "verify"
+        ],
+        "attributes": {
+          "enabled": "[parameters('enableSigningKey')]",
+          "nbf": "[variables('keyActivationTime')]",
+          "exp": "[variables('keyExpirationTime')]"
+        },
+        "rotationPolicy": {
+          "attributes": {
+            "expiryTime": "P1Y"
+          },
+          "lifetimeActions": [
+            {
+              "action": {
+                "type": "rotate"
+              },
+              "trigger": {
+                "timeBeforeExpiry": "P30D"
+              }
+            },
+            {
+              "action": {
+                "type": "notify"
+              },
+              "trigger": {
+                "timeBeforeExpiry": "P14D"
+              }
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "description": "EC P-256 key for digital signatures (compact, fast, ideal for JWT/token signing)"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/certificates",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'app-tls-certificate')]",
+      "tags": "[union(parameters('tags'), createObject('assetType', 'certificate', 'purpose', 'tls-termination', 'issuerType', 'Self', 'rbacRole', 'Key Vault Certificates Officer'))]",
+      "properties": {
+        "certificatePolicy": {
+          "issuerParameters": {
+            "name": "Self"
+          },
+          "keyProperties": {
+            "keyType": "RSA",
+            "keySize": 2048,
+            "exportable": true,
+            "reuseKey": false
+          },
+          "secretProperties": {
+            "contentType": "application/x-pkcs12"
+          },
+          "x509CertificateProperties": {
+            "subject": "[parameters('certificateSubjectName')]",
+            "subjectAlternativeNames": {
+              "dnsNames": [
+                "[replace(replace(parameters('certificateSubjectName'), 'CN=', ''), 'cn=', '')]"
+              ]
+            },
+            "keyUsage": [
+              "digitalSignature",
+              "keyEncipherment"
+            ],
+            "extendedKeyUsage": [
+              "1.3.6.1.5.5.7.3.1"
+            ],
+            "validityInMonths": "[parameters('certificateValidityMonths')]"
+          },
+          "lifetimeActions": [
+            {
+              "trigger": {
+                "lifetimePercentage": "[parameters('certificateRenewalPercentage')]"
+              },
+              "action": {
+                "actionType": "AutoRenew"
+              }
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "description": "Self-signed TLS certificate for demo (shows certificate lifecycle management)"
+      }
+    }
+  ],
+  "outputs": {
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault name (for reference in subsequent deployments)"
+      },
+      "value": "[parameters('keyVaultName')]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault URI (applications use this to connect)"
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+    },
+    "databaseConnectionStringSecretUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Database connection string secret URI (use this in app configuration)"
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'app-database-connection-string'), '2023-07-01').secretUri]"
+    },
+    "externalApiKeySecretUri": {
+      "type": "string",
+      "metadata": {
+        "description": "External API key secret URI"
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'external-api-key'), '2023-07-01').secretUri]"
+    },
+    "storageAccountKeySecretUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account key secret URI"
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'storage-account-key'), '2023-07-01').secretUri]"
+    },
+    "dataEncryptionKeyUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Data encryption key URI (use this for CMK configuration)"
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('keyVaultName'), 'data-encryption-key'), '2023-07-01').keyUri]"
+    },
+    "dataEncryptionKeyUriWithVersion": {
+      "type": "string",
+      "metadata": {
+        "description": "Data encryption key ID (includes version, for explicit version pinning)"
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('keyVaultName'), 'data-encryption-key'), '2023-07-01').keyUriWithVersion]"
+    },
+    "signingKeyUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Signing key URI"
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('keyVaultName'), 'signing-key'), '2023-07-01').keyUri]"
+    },
+    "tlsCertificateSecretId": {
+      "type": "string",
+      "metadata": {
+        "description": "TLS certificate secret ID (use this to bind certificate to App Service or Application Gateway)"
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults/certificates', parameters('keyVaultName'), 'app-tls-certificate'), '2023-07-01').secretId]"
+    },
+    "appServiceSecretReference": {
+      "type": "string",
+      "metadata": {
+        "description": "App Service Key Vault reference format for the database connection string (latest version)"
+      },
+      "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=app-database-connection-string)', parameters('keyVaultName'))]"
+    }
+  }
+}

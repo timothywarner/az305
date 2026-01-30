@@ -1,0 +1,966 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.35.1.17967",
+      "templateHash": "2510284013103362823"
+    }
+  },
+  "parameters": {
+    "namePrefix": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 15,
+      "metadata": {
+        "description": "Base name prefix for all resources. Uses contoso convention."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region. All resources deploy to the same region."
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20,
+      "metadata": {
+        "description": "Administrator username for all VMs."
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "minLength": 12,
+      "metadata": {
+        "description": "Administrator password for all VMs. Minimum 12 characters with complexity requirements."
+      }
+    },
+    "allowedSourceIP": {
+      "type": "string",
+      "metadata": {
+        "description": "Source IP address or CIDR range allowed for RDP/SSH access. Use your public IP (e.g., 203.0.113.50/32). Use * only for quick demos."
+      }
+    },
+    "vnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.10.0.0/16",
+      "metadata": {
+        "description": "Virtual network address space."
+      }
+    },
+    "webSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.10.1.0/24",
+      "metadata": {
+        "description": "Web tier subnet address prefix (Windows VM)."
+      }
+    },
+    "appSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.10.2.0/24",
+      "metadata": {
+        "description": "App tier subnet address prefix (Linux VM)."
+      }
+    },
+    "spotSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.10.3.0/24",
+      "metadata": {
+        "description": "Spot tier subnet address prefix (Spot VM)."
+      }
+    },
+    "vmssSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.10.4.0/24",
+      "metadata": {
+        "description": "Scale set subnet address prefix (VMSS)."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "environment": "demo",
+        "purpose": "az305-compute-fleet",
+        "examObjective": "AZ-305-Domain4-Compute",
+        "owner": "contoso-training",
+        "deleteAfter": "demo-complete"
+      },
+      "metadata": {
+        "description": "Tags applied to every resource for governance and cost tracking."
+      }
+    }
+  },
+  "variables": {
+    "vnetName": "[format('vnet-{0}-compute-fleet', parameters('namePrefix'))]",
+    "nsgWindowsName": "[format('nsg-{0}-web', parameters('namePrefix'))]",
+    "nsgLinuxName": "[format('nsg-{0}-app', parameters('namePrefix'))]",
+    "nsgSpotName": "[format('nsg-{0}-spot', parameters('namePrefix'))]",
+    "nsgVmssName": "[format('nsg-{0}-vmss', parameters('namePrefix'))]",
+    "windowsVmName": "[format('vm-{0}-web', parameters('namePrefix'))]",
+    "linuxVmName": "[format('vm-{0}-app', parameters('namePrefix'))]",
+    "spotVmName": "[format('vm-{0}-spot', parameters('namePrefix'))]",
+    "vmssName": "[format('vmss-{0}-scale', parameters('namePrefix'))]",
+    "windowsNicName": "[format('nic-{0}', variables('windowsVmName'))]",
+    "linuxNicName": "[format('nic-{0}', variables('linuxVmName'))]",
+    "spotNicName": "[format('nic-{0}', variables('spotVmName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('vnetName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnetAddressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "snet-web",
+            "properties": {
+              "addressPrefix": "[parameters('webSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgWindowsName'))]"
+              }
+            }
+          },
+          {
+            "name": "snet-app",
+            "properties": {
+              "addressPrefix": "[parameters('appSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgLinuxName'))]"
+              }
+            }
+          },
+          {
+            "name": "snet-spot",
+            "properties": {
+              "addressPrefix": "[parameters('spotSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgSpotName'))]"
+              }
+            }
+          },
+          {
+            "name": "snet-vmss",
+            "properties": {
+              "addressPrefix": "[parameters('vmssSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgVmssName'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgLinuxName'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgSpotName'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgVmssName'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgWindowsName'))]"
+      ],
+      "metadata": {
+        "description": "Shared virtual network with tiered subnets for compute fleet"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('nsgWindowsName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowRDP",
+            "properties": {
+              "priority": 100,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "[parameters('allowedSourceIP')]",
+              "destinationAddressPrefix": "*",
+              "description": "Allow RDP from admin source IP only (use Bastion in production)"
+            }
+          },
+          {
+            "name": "AllowHTTPS",
+            "properties": {
+              "priority": 200,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "description": "Allow HTTPS inbound for web serving"
+            }
+          },
+          {
+            "name": "DenyAllInbound",
+            "properties": {
+              "priority": 4096,
+              "direction": "Inbound",
+              "access": "Deny",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "description": "Explicit deny-all for defense in depth"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "description": "NSG for Windows web tier - allows RDP from restricted source only"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('nsgLinuxName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowSSH",
+            "properties": {
+              "priority": 100,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "[parameters('allowedSourceIP')]",
+              "destinationAddressPrefix": "*",
+              "description": "Allow SSH from admin source IP only (use Bastion in production)"
+            }
+          },
+          {
+            "name": "AllowAppPort",
+            "properties": {
+              "priority": 200,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "8080",
+              "sourceAddressPrefix": "[parameters('webSubnetPrefix')]",
+              "destinationAddressPrefix": "*",
+              "description": "Allow app traffic from web tier only (micro-segmentation)"
+            }
+          },
+          {
+            "name": "DenyAllInbound",
+            "properties": {
+              "priority": 4096,
+              "direction": "Inbound",
+              "access": "Deny",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "description": "Explicit deny-all for defense in depth"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "description": "NSG for Linux app tier - allows SSH from restricted source only"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('nsgSpotName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowSSH",
+            "properties": {
+              "priority": 100,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "[parameters('allowedSourceIP')]",
+              "destinationAddressPrefix": "*",
+              "description": "Allow SSH from admin source IP only"
+            }
+          },
+          {
+            "name": "DenyAllInbound",
+            "properties": {
+              "priority": 4096,
+              "direction": "Inbound",
+              "access": "Deny",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "description": "Explicit deny-all for defense in depth"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "description": "NSG for Spot VM tier - SSH from restricted source only"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('nsgVmssName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowHTTP",
+            "properties": {
+              "priority": 100,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "description": "Allow HTTP for scale testing demos"
+            }
+          },
+          {
+            "name": "AllowSSH",
+            "properties": {
+              "priority": 200,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "[parameters('allowedSourceIP')]",
+              "destinationAddressPrefix": "*",
+              "description": "Allow SSH from admin source IP only"
+            }
+          },
+          {
+            "name": "DenyAllInbound",
+            "properties": {
+              "priority": 4096,
+              "direction": "Inbound",
+              "access": "Deny",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "description": "Explicit deny-all for defense in depth"
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "description": "NSG for VMSS tier - allows HTTP from anywhere for load testing"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('windowsNicName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-11-01').subnets[0].id]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ],
+      "metadata": {
+        "description": "NIC for the Windows web VM"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('linuxNicName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-11-01').subnets[1].id]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ],
+      "metadata": {
+        "description": "NIC for the Linux app VM"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('spotNicName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-11-01').subnets[2].id]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ],
+      "metadata": {
+        "description": "NIC for the Spot VM"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('windowsVmName')]",
+      "location": "[parameters('location')]",
+      "tags": "[union(parameters('tags'), createObject('role', 'web-server', 'os', 'windows', 'tier', 'frontend'))]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_D2as_v5"
+        },
+        "osProfile": {
+          "computerName": "[take(variables('windowsVmName'), 15)]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true,
+            "patchSettings": {
+              "patchMode": "AutomaticByPlatform",
+              "assessmentMode": "AutomaticByPlatform",
+              "automaticByPlatformSettings": {
+                "rebootSetting": "IfRequired"
+              }
+            }
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2022-datacenter-azure-edition",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[format('osdisk-{0}', variables('windowsVmName'))]",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "Premium_LRS"
+            },
+            "caching": "ReadWrite",
+            "deleteOption": "Delete"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('windowsNicName'))]",
+              "properties": {
+                "deleteOption": "Delete"
+              }
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true
+          }
+        },
+        "securityProfile": {
+          "securityType": "TrustedLaunch",
+          "uefiSettings": {
+            "secureBootEnabled": true,
+            "vTpmEnabled": true
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('windowsNicName'))]"
+      ],
+      "metadata": {
+        "description": "Windows Server 2022 VM simulating a web server in Availability Zone 1"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('linuxVmName')]",
+      "location": "[parameters('location')]",
+      "tags": "[union(parameters('tags'), createObject('role', 'app-server', 'os', 'linux', 'tier', 'backend'))]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_D2as_v5"
+        },
+        "osProfile": {
+          "computerName": "[take(variables('linuxVmName'), 64)]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": false,
+            "provisionVMAgent": true,
+            "patchSettings": {
+              "patchMode": "AutomaticByPlatform",
+              "assessmentMode": "AutomaticByPlatform",
+              "automaticByPlatformSettings": {
+                "rebootSetting": "IfRequired"
+              }
+            }
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "0001-com-ubuntu-server-jammy",
+            "sku": "22_04-lts-gen2",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[format('osdisk-{0}', variables('linuxVmName'))]",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            },
+            "caching": "ReadWrite",
+            "deleteOption": "Delete"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('linuxNicName'))]",
+              "properties": {
+                "deleteOption": "Delete"
+              }
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true
+          }
+        },
+        "securityProfile": {
+          "securityType": "TrustedLaunch",
+          "uefiSettings": {
+            "secureBootEnabled": true,
+            "vTpmEnabled": true
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('linuxNicName'))]"
+      ],
+      "metadata": {
+        "description": "Ubuntu 22.04 LTS VM simulating an app server in Availability Zone 2"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('spotVmName')]",
+      "location": "[parameters('location')]",
+      "tags": "[union(parameters('tags'), createObject('role', 'batch-worker', 'os', 'linux', 'tier', 'spot-compute', 'costOptimization', 'spot-instance'))]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_D2as_v5"
+        },
+        "priority": "Spot",
+        "evictionPolicy": "Deallocate",
+        "billingProfile": {
+          "maxPrice": -1
+        },
+        "osProfile": {
+          "computerName": "[take(variables('spotVmName'), 64)]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": false,
+            "provisionVMAgent": true
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "0001-com-ubuntu-server-jammy",
+            "sku": "22_04-lts-gen2",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[format('osdisk-{0}', variables('spotVmName'))]",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            },
+            "caching": "ReadWrite",
+            "deleteOption": "Delete"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('spotNicName'))]",
+              "properties": {
+                "deleteOption": "Delete"
+              }
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true
+          }
+        },
+        "securityProfile": {
+          "securityType": "TrustedLaunch",
+          "uefiSettings": {
+            "secureBootEnabled": true,
+            "vTpmEnabled": true
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('spotNicName'))]"
+      ],
+      "metadata": {
+        "description": "Spot VM demonstrating cost optimization with eviction policy"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachineScaleSets",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('vmssName')]",
+      "location": "[parameters('location')]",
+      "tags": "[union(parameters('tags'), createObject('role', 'scalable-workload', 'os', 'linux', 'tier', 'vmss-compute', 'autoScale', 'enabled'))]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "sku": {
+        "name": "Standard_D2as_v5",
+        "tier": "Standard",
+        "capacity": 2
+      },
+      "properties": {
+        "orchestrationMode": "Flexible",
+        "platformFaultDomainCount": 1,
+        "virtualMachineProfile": {
+          "osProfile": {
+            "computerNamePrefix": "[take(parameters('namePrefix'), 9)]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]",
+            "linuxConfiguration": {
+              "disablePasswordAuthentication": false,
+              "provisionVMAgent": true
+            }
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "Canonical",
+              "offer": "0001-com-ubuntu-server-jammy",
+              "sku": "22_04-lts-gen2",
+              "version": "latest"
+            },
+            "osDisk": {
+              "createOption": "FromImage",
+              "managedDisk": {
+                "storageAccountType": "StandardSSD_LRS"
+              },
+              "caching": "ReadWrite"
+            }
+          },
+          "networkProfile": {
+            "networkApiVersion": "2020-11-01",
+            "networkInterfaceConfigurations": [
+              {
+                "name": "[format('nic-{0}', variables('vmssName'))]",
+                "properties": {
+                  "primary": true,
+                  "ipConfigurations": [
+                    {
+                      "name": "ipconfig1",
+                      "properties": {
+                        "primary": true,
+                        "subnet": {
+                          "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-11-01').subnets[3].id]"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "diagnosticsProfile": {
+            "bootDiagnostics": {
+              "enabled": true
+            }
+          },
+          "securityProfile": {
+            "securityType": "TrustedLaunch",
+            "uefiSettings": {
+              "secureBootEnabled": true,
+              "vTpmEnabled": true
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+      ],
+      "metadata": {
+        "description": "VM Scale Set with autoscaling and zone redundancy"
+      }
+    },
+    {
+      "type": "Microsoft.Insights/autoscalesettings",
+      "apiVersion": "2022-10-01",
+      "name": "[format('autoscale-{0}', variables('vmssName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "enabled": true,
+        "targetResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets', variables('vmssName'))]",
+        "profiles": [
+          {
+            "name": "CPU-based autoscaling",
+            "capacity": {
+              "minimum": "2",
+              "maximum": "5",
+              "default": "2"
+            },
+            "rules": [
+              {
+                "metricTrigger": {
+                  "metricName": "Percentage CPU",
+                  "metricResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets', variables('vmssName'))]",
+                  "timeGrain": "PT1M",
+                  "statistic": "Average",
+                  "timeWindow": "PT5M",
+                  "timeAggregation": "Average",
+                  "operator": "GreaterThan",
+                  "threshold": 70
+                },
+                "scaleAction": {
+                  "direction": "Increase",
+                  "type": "ChangeCount",
+                  "value": "1",
+                  "cooldown": "PT5M"
+                }
+              },
+              {
+                "metricTrigger": {
+                  "metricName": "Percentage CPU",
+                  "metricResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets', variables('vmssName'))]",
+                  "timeGrain": "PT1M",
+                  "statistic": "Average",
+                  "timeWindow": "PT10M",
+                  "timeAggregation": "Average",
+                  "operator": "LessThan",
+                  "threshold": 30
+                },
+                "scaleAction": {
+                  "direction": "Decrease",
+                  "type": "ChangeCount",
+                  "value": "1",
+                  "cooldown": "PT10M"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachineScaleSets', variables('vmssName'))]"
+      ],
+      "metadata": {
+        "description": "Autoscale settings for the VM Scale Set with CPU-based rules"
+      }
+    }
+  ],
+  "outputs": {
+    "vnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual network resource ID"
+      },
+      "value": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+    },
+    "vnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual network name"
+      },
+      "value": "[variables('vnetName')]"
+    },
+    "windowsVmId": {
+      "type": "string",
+      "metadata": {
+        "description": "Windows VM resource ID"
+      },
+      "value": "[resourceId('Microsoft.Compute/virtualMachines', variables('windowsVmName'))]"
+    },
+    "windowsVmName": {
+      "type": "string",
+      "metadata": {
+        "description": "Windows VM name"
+      },
+      "value": "[variables('windowsVmName')]"
+    },
+    "windowsVmPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Windows VM managed identity principal ID (use for RBAC assignments)"
+      },
+      "value": "[reference(resourceId('Microsoft.Compute/virtualMachines', variables('windowsVmName')), '2024-03-01', 'full').identity.principalId]"
+    },
+    "linuxVmId": {
+      "type": "string",
+      "metadata": {
+        "description": "Linux VM resource ID"
+      },
+      "value": "[resourceId('Microsoft.Compute/virtualMachines', variables('linuxVmName'))]"
+    },
+    "linuxVmName": {
+      "type": "string",
+      "metadata": {
+        "description": "Linux VM name"
+      },
+      "value": "[variables('linuxVmName')]"
+    },
+    "linuxVmPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Linux VM managed identity principal ID (use for RBAC assignments)"
+      },
+      "value": "[reference(resourceId('Microsoft.Compute/virtualMachines', variables('linuxVmName')), '2024-03-01', 'full').identity.principalId]"
+    },
+    "spotVmId": {
+      "type": "string",
+      "metadata": {
+        "description": "Spot VM resource ID"
+      },
+      "value": "[resourceId('Microsoft.Compute/virtualMachines', variables('spotVmName'))]"
+    },
+    "spotVmName": {
+      "type": "string",
+      "metadata": {
+        "description": "Spot VM name"
+      },
+      "value": "[variables('spotVmName')]"
+    },
+    "spotVmPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Spot VM managed identity principal ID"
+      },
+      "value": "[reference(resourceId('Microsoft.Compute/virtualMachines', variables('spotVmName')), '2024-03-01', 'full').identity.principalId]"
+    },
+    "vmssId": {
+      "type": "string",
+      "metadata": {
+        "description": "VM Scale Set resource ID"
+      },
+      "value": "[resourceId('Microsoft.Compute/virtualMachineScaleSets', variables('vmssName'))]"
+    },
+    "vmssName": {
+      "type": "string",
+      "metadata": {
+        "description": "VM Scale Set name"
+      },
+      "value": "[variables('vmssName')]"
+    },
+    "vmssPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "VM Scale Set managed identity principal ID"
+      },
+      "value": "[reference(resourceId('Microsoft.Compute/virtualMachineScaleSets', variables('vmssName')), '2024-03-01', 'full').identity.principalId]"
+    },
+    "webSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Web tier subnet ID"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-11-01').subnets[0].id]"
+    },
+    "appSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "App tier subnet ID"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-11-01').subnets[1].id]"
+    },
+    "spotSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Spot tier subnet ID"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-11-01').subnets[2].id]"
+    },
+    "vmssSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "VMSS subnet ID"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '2023-11-01').subnets[3].id]"
+    }
+  }
+}
